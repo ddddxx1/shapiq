@@ -77,34 +77,6 @@ class ExampleSinglePlayerStrategy(BasePlayerStrategy):
         """Return number of players."""
         return 1
 
-
-class ExampleWordPlayerStrategy(BasePlayerStrategy):
-    """
-    Simple whitespace word player strategy for the user-facing example.
-    使用空白字符将输入文本划分为单词玩家。
-    """
-
-    def __init__(self, text: str) -> None:
-        """Split the text into word players."""
-        self._players = text.split()
-
-    def get_players(self) -> list[str]:
-        """Return word players."""
-        return self._players
-
-    def _join(
-        self,
-        parts: list[str],
-    ) -> str:
-        """Join words into text."""
-        return " ".join(parts)
-
-    @property
-    def n_players(self) -> int:
-        """Return number of word players."""
-        return len(self._players)
-
-
 def select_device() -> str:
     """Select the best available torch device."""
     if torch.cuda.is_available():
@@ -207,7 +179,7 @@ def score_with_normalized_imputer(
             prompt_template=prompt_template,
             normalize_target_logprob=normalize_target_logprob,
             model_type=model_type,
-            player_strategy=ExampleSinglePlayerStrategy(text),
+            player_level="word",
             perturbation_strategy=RemovalPerturbation(),
         )
         normalized_score = imputer(imputer.grand_coalition)[0]  # Game.__call__() normalized value
@@ -235,7 +207,7 @@ def make_word_level_imputer(
     output_type: str = "logit",
     normalize_target_logprob: bool = True,
 ) -> TextImputer:
-    """Create a TextImputer whose players are whitespace-split words."""
+    """Create a TextImputer with word-level players."""
     return TextImputer(
         model=model,
         tokenizer=tokenizer,
@@ -248,7 +220,7 @@ def make_word_level_imputer(
         prompt_template=prompt_template,
         normalize_target_logprob=normalize_target_logprob,
         model_type=model_type,
-        player_strategy=ExampleWordPlayerStrategy(text),
+        player_level="word",
         perturbation_strategy=RemovalPerturbation(),
     )
 
@@ -263,10 +235,62 @@ def print_word_level_explanations(
 ) -> None:
     """Compute and print word Shapley values and pairwise interactions."""
     words = imputer.player_strategy.get_players()
+    print("\nDEBUG: Single-player coalitions")
+
+    print("-" * 70)
+
+    for i, word in enumerate(words):
+
+        coalition = np.zeros((1, imputer.n_features), dtype=bool)
+
+        coalition[0, i] = True
+
+        perturbed_text = imputer.player_strategy.coalition_to_text(
+            coalition[0],
+            imputer.perturbation_strategy,
+        )
+
+        normalized_value = imputer(coalition)[0]
+
+        raw_value = normalized_value + imputer.empty_prediction
+
+        print(
+
+            f"{i:>2}  {word:<20} "
+
+            f"text={perturbed_text!r:<25} "
+
+            f"raw={raw_value:+.4f}  "
+
+            f"normalized={normalized_value:+.4f}"
+
+        )
+
+    # good_idx = words.index("good")
+    # entertaining_idx = words.index("entertaining")
+
+    # pair_coalition = np.zeros(
+    #     (1, imputer.n_features),
+    #     dtype=bool,
+    # )
+    # pair_coalition[0, good_idx] = True
+    # pair_coalition[0, entertaining_idx] = True
+    # pair_text = imputer.player_strategy.coalition_to_text(
+    #     pair_coalition[0],
+    #     imputer.perturbation_strategy,
+    # )
+    # pair_normalized = imputer(pair_coalition)[0]
+    # pair_raw = pair_normalized + imputer.empty_prediction
+
+    # print("\nDEBUG: good + entertaining")
+    # print("-" * 70)
+    # print(f"text       = {pair_text!r}")
+    # print(f"raw        = {pair_raw:+.4f}")
+    # print(f"normalized = {pair_normalized:+.4f}")
     print(f"\nWord-level explanation for {label}")
     print("=" * (27 + len(label)))
     print(f"Explained text: {imputer.text}")
-    print(f"Players ({imputer.n_players} words): {words}")
+    print(f"Players ({imputer.n_features} words): {words}")
     print(f"Empty prediction: {imputer.empty_prediction:.4f}")
     print(f"Full prediction : {imputer.full_prediction:.4f}")
     print(f"Normalized full : {float(imputer(imputer.grand_coalition)[0]):+.4f}")
@@ -275,8 +299,8 @@ def print_word_level_explanations(
     # 计算一阶 Shapley Value
     # ------------------------------------------------------------------
 
-    sv = KernelSHAP(n=imputer.n_players, random_state=42).approximate(
-        budget=sv_budget,
+    sv = KernelSHAP(n=imputer.n_features, random_state=42).approximate(
+        budget=2**imputer.n_features,
         game=imputer,
     )
     print("\nFirst-order Shapley values")
@@ -291,12 +315,12 @@ def print_word_level_explanations(
     # ------------------------------------------------------------------
 
     sii = KernelSHAPIQ(
-        n=imputer.n_players,
+        n=imputer.n_features,
         index="k-SII",
         max_order=2,
         random_state=42,
     ).approximate(
-        budget=sii_budget,
+        budget=2**imputer.n_features,
         game=imputer,
     )
     print("\nSecond-order Shapley interactions (k-SII)")
@@ -305,7 +329,7 @@ def print_word_level_explanations(
 
     # 枚举所有不重复的单词对
 
-    for i, j in combinations(range(imputer.n_players), 2):
+    for i, j in combinations(range(imputer.n_features), 2):
         print(f"{words[i]} x {words[j]:<20}  {sii[(i, j)]:>+12.4f}")
 
     if show_plots:
@@ -334,7 +358,7 @@ def run_encoder_classifier(
         device=device,
         model_type="encoder_classifier",
         class_idx=1,
-        output_type="probability",
+        output_type="logit",
     )
     print_scores(
         "TextImputer encoder_classifier: normalized P(positive sentiment)",
@@ -351,7 +375,7 @@ def run_encoder_classifier(
         device=device,
         model_type="encoder_classifier",
         class_idx=1,
-        output_type="probability",
+        output_type="logit",
     )
     # 计算单词级 Shapley Value 和单词对交互
     print_word_level_explanations(
