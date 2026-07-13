@@ -670,3 +670,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+# changes: player_strategy \ budget too small
