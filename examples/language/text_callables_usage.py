@@ -36,8 +36,14 @@ INPUT_TEXTS = [
     "The movie was surprisingly bad and very boring.",
 ]
 
+CAUSAL_LM_INPUT_TEXTS = [
+    "The sky is clear and the sun is shining",
+    "Dark clouds cover the sky and heavy rain is falling",
+    "There is not enough information to predict the weather",
+]
+
 ENCODER_MODEL_NAME = "distilbert-base-uncased-finetuned-sst-2-english"
-CAUSAL_LM_MODEL_NAME = "sshleifer/tiny-gpt2"
+CAUSAL_LM_MODEL_NAME = "Qwen/Qwen2.5-0.5B-Instruct"    # openai-community/gpt2 sshleifer/tiny-gpt2
 SEQ2SEQ_MODEL_NAME = "google/flan-t5-small"
 
 
@@ -358,7 +364,7 @@ def run_encoder_classifier(
     return scores, full_scores, empty_scores
 
 
-def run_causal_lm(
+def run_causal_lm_sentiment(
     texts: list[str],
     device: str,
     *,
@@ -404,6 +410,84 @@ def run_causal_lm(
         sii_budget=sii_budget,
         show_plots=show_explanation_plots,
     )
+    return scores, full_scores, empty_scores
+
+
+def run_causal_lm_weather(
+    texts: list[str],
+    device: str,
+    *,
+    explain_text: str,
+    sv_budget: int,
+    sii_budget: int,
+    show_explanation_plots: bool,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Use a causal LM to score a natural continuation.
+
+    The model receives a weather description followed by:
+
+        ", so the weather is"
+
+    It then scores the natural continuation:
+
+        " good"
+
+    This is closer to the original next-token prediction objective of a
+    causal language model than instruction-style sentiment classification.
+    """
+    tokenizer = AutoTokenizer.from_pretrained(CAUSAL_LM_MODEL_NAME)
+    model = AutoModelForCausalLM.from_pretrained(CAUSAL_LM_MODEL_NAME)
+    model.to(device).eval()
+
+    # GPT-2 does not define a dedicated padding token.
+    # Use EOS as padding when TextImputer batches perturbed inputs.
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    model.config.pad_token_id = tokenizer.pad_token_id
+
+    scores, full_scores, empty_scores = score_with_normalized_imputer(
+        model=model,
+        tokenizer=tokenizer,
+        texts=texts,
+        device=device,
+        model_type="causal_lm",
+
+        # The leading whitespace is important for GPT-2 tokenization:
+        # this represents the word as a continuation of the prompt.
+        target_label=" good",
+
+        # Keep the task structure fixed while TextImputer perturbs only
+        # the weather-description words represented by {text}.
+        prompt_template="{text}, so the weather is",
+    )
+
+    print_scores(
+        "TextImputer causal_lm: normalized log P(' good' | weather context)",
+        texts,
+        scores,
+        full_scores,
+        empty_scores,
+    )
+
+    word_imputer = make_word_level_imputer(
+        model=model,
+        tokenizer=tokenizer,
+        text=explain_text,
+        device=device,
+        model_type="causal_lm",
+        target_label=" good",
+        prompt_template="{text}, so the weather is",
+    )
+
+    print_word_level_explanations(
+        label="causal_lm",
+        imputer=word_imputer,
+        sv_budget=sv_budget,
+        sii_budget=sii_budget,
+        show_plots=show_explanation_plots,
+    )
+
     return scores, full_scores, empty_scores
 
 
@@ -548,55 +632,212 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+# def main() -> None:
+#     """Run the selected callable example."""
+#     args = parse_args()
+#     texts = args.texts or INPUT_TEXTS
+#     if not 0 <= args.explain_text_index < len(texts):
+#         msg = f"--explain-text-index must be between 0 and {len(texts) - 1}."
+#         raise ValueError(msg)
+
+#     explain_text = texts[args.explain_text_index]
+#     device = select_device()
+#     print(f"Using device: {device}")
+#     print(f"Word-level explanation target: input {args.explain_text_index}")
+
+#     runners = {
+#         "encoder": run_encoder_classifier,
+#         "causal": run_causal_lm,
+#         "seq2seq": run_seq2seq,
+#     }
+#     scores_by_model_type = {}
+#     empty_scores_by_model_type = {}
+
+#     if args.callable == "all":
+#         for model_type, runner in runners.items():
+#             scores, _, empty_scores = runner(
+#                 texts,
+#                 device,
+#                 explain_text=explain_text,
+#                 sv_budget=args.sv_budget,
+#                 sii_budget=args.sii_budget,
+#                 show_explanation_plots=not args.no_plot and not args.no_explanation_plots,
+#             )
+#             scores_by_model_type[model_type] = scores
+#             empty_scores_by_model_type[model_type] = empty_scores
+#     # if args.callable == "causal":
+#     #     causal_texts = args.texts or CAUSAL_LM_INPUT_TEXTS
+#     #     if not 0 <= args.explain_text_index < len(causal_texts):
+#     #         msg = (
+#     #             f"--explain-text-index must be between "
+#     #             f"0 and {len(causal_texts) - 1}."
+#     #         )
+#     #         raise ValueError(msg)
+#     #     explain_text = causal_texts[args.explain_text_index]
+#     #     scores, _, empty_scores = run_causal_lm(
+#     #         causal_texts,
+#     #         device,
+#     #         explain_text=explain_text,
+#     #         sv_budget=args.sv_budget,
+#     #         sii_budget=args.sii_budget,
+#     #         show_explanation_plots=(
+#     #             not args.no_plot
+#     #             and not args.no_explanation_plots
+#     #         ),
+#     #     )
+#     else:
+#         scores, _, empty_scores = runners[args.callable](
+#             texts,
+#             device,
+#             explain_text=explain_text,
+#             sv_budget=args.sv_budget,
+#             sii_budget=args.sii_budget,
+#             show_explanation_plots=not args.no_plot and not args.no_explanation_plots,
+#         )
+#         scores_by_model_type[args.callable] = scores
+#         empty_scores_by_model_type[args.callable] = empty_scores
+
+#     print_score_delta_explanation(texts, scores_by_model_type, empty_scores_by_model_type)
+
+#     if not args.no_plot:
+#         show_score_delta_plot(texts, scores_by_model_type)
+
+
+
 def main() -> None:
-    """Run the selected callable example."""
+    """Run the selected TextImputer example."""
     args = parse_args()
-    texts = args.texts or INPUT_TEXTS
-    if not 0 <= args.explain_text_index < len(texts):
-        msg = f"--explain-text-index must be between 0 and {len(texts) - 1}."
-        raise ValueError(msg)
-
-    explain_text = texts[args.explain_text_index]
     device = select_device()
-    print(f"Using device: {device}")
-    print(f"Word-level explanation target: input {args.explain_text_index}")
 
-    runners = {
+    print(f"Using device: {device}")
+
+    runners_sentiment = {
         "encoder": run_encoder_classifier,
-        "causal": run_causal_lm,
+        "causal": run_causal_lm_sentiment,
         "seq2seq": run_seq2seq,
     }
-    scores_by_model_type = {}
-    empty_scores_by_model_type = {}
+
+    # runners = {
+    #     "encoder": run_encoder_classifier,
+    #     "causal": run_causal_lm,
+    #     "seq2seq": run_seq2seq,
+    # }
+
+    scores_by_model_type: dict[str, np.ndarray] = {}
+    empty_scores_by_model_type: dict[str, np.ndarray] = {}
 
     if args.callable == "all":
-        for model_type, runner in runners.items():
+        # 当运行全部模型时，仍然使用通用的情感分析文本。
+        texts = args.texts or INPUT_TEXTS
+
+        if not 0 <= args.explain_text_index < len(texts):
+            msg = (
+                f"--explain-text-index must be between "
+                f"0 and {len(texts) - 1}."
+            )
+            raise ValueError(msg)
+
+        explain_text = texts[args.explain_text_index]
+
+        print(
+            f"Word-level explanation target: "
+            f"input {args.explain_text_index}"
+        )
+
+        for model_type, runner in runners_sentiment.items():
             scores, _, empty_scores = runner(
                 texts,
                 device,
                 explain_text=explain_text,
                 sv_budget=args.sv_budget,
                 sii_budget=args.sii_budget,
-                show_explanation_plots=not args.no_plot and not args.no_explanation_plots,
+                show_explanation_plots=(
+                    not args.no_plot
+                    and not args.no_explanation_plots
+                ),
             )
+
             scores_by_model_type[model_type] = scores
             empty_scores_by_model_type[model_type] = empty_scores
-    else:
-        scores, _, empty_scores = runners[args.callable](
+
+    elif args.callable == "causal":
+        # Causal LM 使用更适合自然语言续写的文本。
+        texts = args.texts or CAUSAL_LM_INPUT_TEXTS
+
+        if not 0 <= args.explain_text_index < len(texts):
+            msg = (
+                f"--explain-text-index must be between "
+                f"0 and {len(texts) - 1}."
+            )
+            raise ValueError(msg)
+
+        explain_text = texts[args.explain_text_index]
+
+        print(
+            f"Word-level explanation target: "
+            f"input {args.explain_text_index}"
+        )
+
+        scores, _, empty_scores = run_causal_lm_weather(
             texts,
             device,
             explain_text=explain_text,
             sv_budget=args.sv_budget,
             sii_budget=args.sii_budget,
-            show_explanation_plots=not args.no_plot and not args.no_explanation_plots,
+            show_explanation_plots=(
+                not args.no_plot
+                and not args.no_explanation_plots
+            ),
         )
+
+        scores_by_model_type["causal"] = scores
+        empty_scores_by_model_type["causal"] = empty_scores
+
+    else:
+        # 单独运行 encoder 或 seq2seq。
+        texts = args.texts or INPUT_TEXTS
+
+        if not 0 <= args.explain_text_index < len(texts):
+            msg = (
+                f"--explain-text-index must be between "
+                f"0 and {len(texts) - 1}."
+            )
+            raise ValueError(msg)
+
+        explain_text = texts[args.explain_text_index]
+
+        print(
+            f"Word-level explanation target: "
+            f"input {args.explain_text_index}"
+        )
+
+        scores, _, empty_scores = runners_sentiment[args.callable](
+            texts,
+            device,
+            explain_text=explain_text,
+            sv_budget=args.sv_budget,
+            sii_budget=args.sii_budget,
+            show_explanation_plots=(
+                not args.no_plot
+                and not args.no_explanation_plots
+            ),
+        )
+
         scores_by_model_type[args.callable] = scores
         empty_scores_by_model_type[args.callable] = empty_scores
 
-    print_score_delta_explanation(texts, scores_by_model_type, empty_scores_by_model_type)
+    print_score_delta_explanation(
+        texts,
+        scores_by_model_type,
+        empty_scores_by_model_type,
+    )
 
     if not args.no_plot:
-        show_score_delta_plot(texts, scores_by_model_type)
+        show_score_delta_plot(
+            texts,
+            scores_by_model_type,
+        )
+
 
 
 if __name__ == "__main__":
