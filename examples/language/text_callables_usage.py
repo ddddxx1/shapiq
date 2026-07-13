@@ -25,8 +25,6 @@ from transformers import (
 
 from shapiq.approximator import KernelSHAP, KernelSHAPIQ
 from shapiq.imputer.text.imputer import TextImputer
-from shapiq.imputer.text.perturbations import RemovalPerturbation
-from shapiq.imputer.text.players import BasePlayerStrategy
 from shapiq.interaction_values import InteractionValues
 from shapiq.plot import bar_plot
 
@@ -43,66 +41,8 @@ CAUSAL_LM_INPUT_TEXTS = [
 ]
 
 ENCODER_MODEL_NAME = "distilbert-base-uncased-finetuned-sst-2-english"
-CAUSAL_LM_MODEL_NAME = "Qwen/Qwen2.5-0.5B-Instruct"    # openai-community/gpt2 sshleifer/tiny-gpt2
+CAUSAL_LM_MODEL_NAME = "Qwen/Qwen2.5-0.5B-Instruct"  # openai-community/gpt2 sshleifer/tiny-gpt2
 SEQ2SEQ_MODEL_NAME = "google/flan-t5-small"
-
-
-class ExampleSinglePlayerStrategy(BasePlayerStrategy):
-    """Minimal player strategy used only to initialize TextImputer.
-    将整段输入文本视为一个玩家的最小玩家划分策略。
-    该策略只用于计算整段文本的归一化分数，而不是单词级解释。
-
-    Each full input text is represented as one player. Evaluating the grand
-    coalition with ``TextImputer.__call__`` returns the normalized value
-    ``full_prediction - empty_prediction``.
-    """
-
-    def __init__(self, text: str) -> None:
-        """Initialize with one full-text player."""
-        self._text = text
-
-    def get_players(self) -> list[str]:
-        """Return the one full-text player."""
-        return [self._text]
-
-    def _join(
-        self,
-        parts: list[str],
-    ) -> str:
-        """Join text parts."""
-        return " ".join(parts)
-
-    @property
-    def n_players(self) -> int:
-        """Return number of players."""
-        return 1
-
-
-class ExampleWordPlayerStrategy(BasePlayerStrategy):
-    """
-    Simple whitespace word player strategy for the user-facing example.
-    使用空白字符将输入文本划分为单词玩家。
-    """
-
-    def __init__(self, text: str) -> None:
-        """Split the text into word players."""
-        self._players = text.split()
-
-    def get_players(self) -> list[str]:
-        """Return word players."""
-        return self._players
-
-    def _join(
-        self,
-        parts: list[str],
-    ) -> str:
-        """Join words into text."""
-        return " ".join(parts)
-
-    @property
-    def n_players(self) -> int:
-        """Return number of word players."""
-        return len(self._players)
 
 
 def select_device() -> str:
@@ -147,7 +87,7 @@ def print_score_delta_explanation(
     print("Each score is computed through TextImputer.__call__(grand_coalition).")
     print("That means shapiq applies Game normalization:")
     print("    normalized_score = full_prediction - empty_prediction")
-    print("Here, empty_prediction is the score of the full text replaced by 'something'.")
+    print("Here, empty_prediction is the score when all word players are removed.")
     print("Positive values mean the original text scores above its empty baseline.")
     print("Negative values mean the original text scores below its empty baseline.\n")
 
@@ -186,15 +126,12 @@ def score_with_normalized_imputer(
     output_type: str = "logit",
     normalize_target_logprob: bool = True,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Score complete texts through normalized TextImputer game calls."""
+    """Score texts through built-in word-level TextImputer game calls."""
     normalized_scores = []
     full_scores = []
     empty_scores = []
 
     for text in texts:
-
-        # 创建Textimputer
-
         imputer = TextImputer(
             model=model,
             tokenizer=tokenizer,
@@ -207,8 +144,8 @@ def score_with_normalized_imputer(
             prompt_template=prompt_template,
             normalize_target_logprob=normalize_target_logprob,
             model_type=model_type,
-            player_strategy=ExampleSinglePlayerStrategy(text),
-            perturbation_strategy=RemovalPerturbation(),
+            player_level="word",
+            perturbation_type="removal",
         )
         normalized_score = imputer(imputer.grand_coalition)[0]  # Game.__call__() normalized value
         normalized_scores.append(normalized_score)
@@ -235,7 +172,7 @@ def make_word_level_imputer(
     output_type: str = "logit",
     normalize_target_logprob: bool = True,
 ) -> TextImputer:
-    """Create a TextImputer whose players are whitespace-split words."""
+    """Create TextImputer through imputer.py's built-in word/removal strategies."""
     return TextImputer(
         model=model,
         tokenizer=tokenizer,
@@ -248,8 +185,8 @@ def make_word_level_imputer(
         prompt_template=prompt_template,
         normalize_target_logprob=normalize_target_logprob,
         model_type=model_type,
-        player_strategy=ExampleWordPlayerStrategy(text),
-        perturbation_strategy=RemovalPerturbation(),
+        player_level="word",
+        perturbation_type="removal",
     )
 
 
@@ -284,7 +221,6 @@ def print_word_level_explanations(
     print("-" * 40)
     for idx, word in enumerate(words):
         print(f"{idx:>3}  {word:<18}  {sv[(idx,)]:>+12.4f}")
-
 
     # ------------------------------------------------------------------
     # 计算二阶 Shapley Interaction
@@ -452,11 +388,9 @@ def run_causal_lm_weather(
         texts=texts,
         device=device,
         model_type="causal_lm",
-
         # The leading whitespace is important for GPT-2 tokenization:
         # this represents the word as a continuation of the prompt.
         target_label=" good",
-
         # Keep the task structure fixed while TextImputer perturbs only
         # the weather-description words represented by {text}.
         prompt_template="{text}, so the weather is",
@@ -632,78 +566,6 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-# def main() -> None:
-#     """Run the selected callable example."""
-#     args = parse_args()
-#     texts = args.texts or INPUT_TEXTS
-#     if not 0 <= args.explain_text_index < len(texts):
-#         msg = f"--explain-text-index must be between 0 and {len(texts) - 1}."
-#         raise ValueError(msg)
-
-#     explain_text = texts[args.explain_text_index]
-#     device = select_device()
-#     print(f"Using device: {device}")
-#     print(f"Word-level explanation target: input {args.explain_text_index}")
-
-#     runners = {
-#         "encoder": run_encoder_classifier,
-#         "causal": run_causal_lm,
-#         "seq2seq": run_seq2seq,
-#     }
-#     scores_by_model_type = {}
-#     empty_scores_by_model_type = {}
-
-#     if args.callable == "all":
-#         for model_type, runner in runners.items():
-#             scores, _, empty_scores = runner(
-#                 texts,
-#                 device,
-#                 explain_text=explain_text,
-#                 sv_budget=args.sv_budget,
-#                 sii_budget=args.sii_budget,
-#                 show_explanation_plots=not args.no_plot and not args.no_explanation_plots,
-#             )
-#             scores_by_model_type[model_type] = scores
-#             empty_scores_by_model_type[model_type] = empty_scores
-#     # if args.callable == "causal":
-#     #     causal_texts = args.texts or CAUSAL_LM_INPUT_TEXTS
-#     #     if not 0 <= args.explain_text_index < len(causal_texts):
-#     #         msg = (
-#     #             f"--explain-text-index must be between "
-#     #             f"0 and {len(causal_texts) - 1}."
-#     #         )
-#     #         raise ValueError(msg)
-#     #     explain_text = causal_texts[args.explain_text_index]
-#     #     scores, _, empty_scores = run_causal_lm(
-#     #         causal_texts,
-#     #         device,
-#     #         explain_text=explain_text,
-#     #         sv_budget=args.sv_budget,
-#     #         sii_budget=args.sii_budget,
-#     #         show_explanation_plots=(
-#     #             not args.no_plot
-#     #             and not args.no_explanation_plots
-#     #         ),
-#     #     )
-#     else:
-#         scores, _, empty_scores = runners[args.callable](
-#             texts,
-#             device,
-#             explain_text=explain_text,
-#             sv_budget=args.sv_budget,
-#             sii_budget=args.sii_budget,
-#             show_explanation_plots=not args.no_plot and not args.no_explanation_plots,
-#         )
-#         scores_by_model_type[args.callable] = scores
-#         empty_scores_by_model_type[args.callable] = empty_scores
-
-#     print_score_delta_explanation(texts, scores_by_model_type, empty_scores_by_model_type)
-
-#     if not args.no_plot:
-#         show_score_delta_plot(texts, scores_by_model_type)
-
-
-
 def main() -> None:
     """Run the selected TextImputer example."""
     args = parse_args()
@@ -717,32 +579,20 @@ def main() -> None:
         "seq2seq": run_seq2seq,
     }
 
-    # runners = {
-    #     "encoder": run_encoder_classifier,
-    #     "causal": run_causal_lm,
-    #     "seq2seq": run_seq2seq,
-    # }
-
     scores_by_model_type: dict[str, np.ndarray] = {}
     empty_scores_by_model_type: dict[str, np.ndarray] = {}
 
     if args.callable == "all":
-        # 当运行全部模型时，仍然使用通用的情感分析文本。
+        # Use the shared sentiment texts when all model families run together.
         texts = args.texts or INPUT_TEXTS
 
         if not 0 <= args.explain_text_index < len(texts):
-            msg = (
-                f"--explain-text-index must be between "
-                f"0 and {len(texts) - 1}."
-            )
+            msg = f"--explain-text-index must be between 0 and {len(texts) - 1}."
             raise ValueError(msg)
 
         explain_text = texts[args.explain_text_index]
 
-        print(
-            f"Word-level explanation target: "
-            f"input {args.explain_text_index}"
-        )
+        print(f"Word-level explanation target: input {args.explain_text_index}")
 
         for model_type, runner in runners_sentiment.items():
             scores, _, empty_scores = runner(
@@ -751,32 +601,23 @@ def main() -> None:
                 explain_text=explain_text,
                 sv_budget=args.sv_budget,
                 sii_budget=args.sii_budget,
-                show_explanation_plots=(
-                    not args.no_plot
-                    and not args.no_explanation_plots
-                ),
+                show_explanation_plots=(not args.no_plot and not args.no_explanation_plots),
             )
 
             scores_by_model_type[model_type] = scores
             empty_scores_by_model_type[model_type] = empty_scores
 
     elif args.callable == "causal":
-        # Causal LM 使用更适合自然语言续写的文本。
+        # Use continuation-style weather texts for the causal LM example.
         texts = args.texts or CAUSAL_LM_INPUT_TEXTS
 
         if not 0 <= args.explain_text_index < len(texts):
-            msg = (
-                f"--explain-text-index must be between "
-                f"0 and {len(texts) - 1}."
-            )
+            msg = f"--explain-text-index must be between 0 and {len(texts) - 1}."
             raise ValueError(msg)
 
         explain_text = texts[args.explain_text_index]
 
-        print(
-            f"Word-level explanation target: "
-            f"input {args.explain_text_index}"
-        )
+        print(f"Word-level explanation target: input {args.explain_text_index}")
 
         scores, _, empty_scores = run_causal_lm_weather(
             texts,
@@ -784,32 +625,23 @@ def main() -> None:
             explain_text=explain_text,
             sv_budget=args.sv_budget,
             sii_budget=args.sii_budget,
-            show_explanation_plots=(
-                not args.no_plot
-                and not args.no_explanation_plots
-            ),
+            show_explanation_plots=(not args.no_plot and not args.no_explanation_plots),
         )
 
         scores_by_model_type["causal"] = scores
         empty_scores_by_model_type["causal"] = empty_scores
 
     else:
-        # 单独运行 encoder 或 seq2seq。
+        # Run either the encoder or seq2seq sentiment example on sentiment texts.
         texts = args.texts or INPUT_TEXTS
 
         if not 0 <= args.explain_text_index < len(texts):
-            msg = (
-                f"--explain-text-index must be between "
-                f"0 and {len(texts) - 1}."
-            )
+            msg = f"--explain-text-index must be between 0 and {len(texts) - 1}."
             raise ValueError(msg)
 
         explain_text = texts[args.explain_text_index]
 
-        print(
-            f"Word-level explanation target: "
-            f"input {args.explain_text_index}"
-        )
+        print(f"Word-level explanation target: input {args.explain_text_index}")
 
         scores, _, empty_scores = runners_sentiment[args.callable](
             texts,
@@ -817,10 +649,7 @@ def main() -> None:
             explain_text=explain_text,
             sv_budget=args.sv_budget,
             sii_budget=args.sii_budget,
-            show_explanation_plots=(
-                not args.no_plot
-                and not args.no_explanation_plots
-            ),
+            show_explanation_plots=(not args.no_plot and not args.no_explanation_plots),
         )
 
         scores_by_model_type[args.callable] = scores
@@ -837,7 +666,6 @@ def main() -> None:
             texts,
             scores_by_model_type,
         )
-
 
 
 if __name__ == "__main__":
