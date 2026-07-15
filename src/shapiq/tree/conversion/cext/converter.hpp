@@ -1,3 +1,4 @@
+#include <locale.h>
 #pragma once
 
 #include <clocale>
