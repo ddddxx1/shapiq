@@ -1,6 +1,6 @@
-# Multilingual Explanation Comparison Demo
+# 🌐 Multilingual Explanation Comparison Demo
 
-## Design Specification (Current Implementation Version)
+## Design Specification
 
 ------------------------------------------------------------------------
 
@@ -17,7 +17,7 @@ itself, but to investigate:
 
 The demo showcases the newly implemented `TextImputer` together with
 SHAPIQ interaction explanations.
-
+插图
 ------------------------------------------------------------------------
 
 ## 2. Research Question
@@ -25,20 +25,32 @@ SHAPIQ interaction explanations.
 Given two semantically equivalent sentences,
 
 -   original sentence
--   translated sentence
--   paraphrased sentence
+-   translated sentence (English ↔ German)
+-   paraphrased sentence (English)
 
 run the same explanation pipeline and compare:
 
--   first-order interaction values
--   second-order interaction values
--   force plots
+- **First-order interaction values** — individual feature contributions and displayed as bar charts
+- **Second-order interaction values** — pairwise feature interactions
+- **Force plots** — SHAPIQ's interactive visualizations
+
 
 The demo does not automatically conclude whether explanations are
-stable.
-
-Instead, it visualizes and prints the explanation evidence for the
+stable. Instead, it visualizes and prints the explanation evidence for the
 presenter or user to compare.
+
+------------------------------------------------------------------------
+
+## ✨ Features
+
+| Feature | Description |
+|---------|-------------|
+| **Two Comparison Modes** | User-defined (any two sentences) or Model-generated (translation/paraphrase) |
+| **Multiple Interaction Indices** | k-SII, STII |
+| **Two Perturbation Strategies** | Removal (baseline) and MLM Infilling (context-aware) |
+| **Multi-language Support** | English ↔ German (translation); English paraphrasing |
+| **Result Export** | JSON data + PNG force plots saved automatically |
+| **Two Interfaces** | Web UI (Streamlit) + CLI (terminal) |
 
 ------------------------------------------------------------------------
 
@@ -130,10 +142,6 @@ The current implementation supports:
 -   English → German
 -   German → English
 
-Chinese is not included in the current version because the explanation
-pipeline uses word-level players and multilingual tokenization
-compatibility has not yet been validated for Chinese.
-
 ### Translation Models
 
 English to German:
@@ -206,7 +214,80 @@ Generated text cannot be manually edited inside the demo workflow.
 
 ## 7. User Interface
 
-The demo uses a CLI terminal interface.
+### Web Interface (Streamlit) — Recommended
+
+The recommended way to explore the demo. Provides an interactive dashboard with real-time visualization.
+
+use command line: streamlit run demo/app.py
+Then open your browser to http://localhost:8501
+
+
+### Interactive Workflow
+
+#### Step 1: Choose Comparison Mode (Sidebar)
+
+| Mode | Description |
+|------|-------------|
+| **User-defined** | Enter two sentences manually for comparison |
+| **Model-generated** | Enter one sentence, auto-generate the second via translation or paraphrase |
+
+---
+
+#### Step 2: Select Generation Mode (Model-generated only)
+
+| Mode | Description |
+|------|-------------|
+| **Translation** | Translate between English and German using OPUS-MT |
+| **Paraphrase** | Generate a paraphrase using Qwen2.5-0.5B-Instruct |
+
+**Three paraphrase styles are available:**
+
+| Style | Description |
+|-------|-------------|
+| **Conservative** | Minimal changes, synonym replacement only |
+| **Moderate** | Clearly different wording, different sentence structure |
+| **Structural** | Changed grammatical structure, preserves entities and facts |
+
+---
+
+#### Step 3: Choose Explanation Settings (Sidebar)
+
+| Setting | Options | Description |
+|---------|---------|-------------|
+| **Interaction Index** | k-SII, STII | Shapley interaction indices |
+| **Maximum Order** | 1–5 (default 2) | Maximum interaction order to compute |
+
+---
+
+#### Step 4: Enter Sentences (Main Area)
+
+- **Sentence 1**: The reference sentence (or original sentence in Model-generated mode)
+- **Sentence 2**: The comparison sentence (auto-generated in Model-generated mode)
+
+---
+
+#### Step 5: View Results
+
+After clicking **"Run Explanation"**, the following outputs are displayed:
+
+**1. First-Order Interaction Values (Bar Charts)**
+
+- Individual contribution of each word
+- Shown separately for Sentence 1 and Sentence 2
+- Separate tabs for Removal and MLM Infilling
+
+**2. Force Plots (Interactive Visualizations)**
+
+- SHAPIQ's signature explanation plots
+- 4 plots total: Sentence 1/2 × Removal/MLM Infilling
+- Saved as PNG files automatically
+
+**[插图位置: 结果展示截图 - 显示一阶值柱状图和 Force Plot]**
+
+
+The demo also uses a CLI terminal interface.
+
+For terminal-based interaction: PYTHONPATH=src python demo/Multilingual_Expanation_Compasion.py
 
 No Gradio.
 
@@ -230,11 +311,41 @@ Comparison Mode
 1. User-defined Comparison
 2. Model-generated Comparison
 
-Choose:
+Choose: 2
+
+Original Sentence
+> The movie is good!
+
+Generation Mode
+1. Translation
+2. Paraphrase
+
+Choose: 1
+
+Source Language
+1. English
+2. German
+
+Choose: 1
+
+Step 2 / 5
+
+Interaction Index
+1. k-SII
+2. STII
+
+Choose: 1
+
+Maximum Order [Default 2]: 2
+
+[... results displayed ...]
 ```
 
 Invalid menu inputs are detected and the user is asked to enter a valid
 option again.
+
+The current visualization function explicitly prints first-order and
+second-order values.Therefore, the intended demo configuration is maximum order 2.
 
 ------------------------------------------------------------------------
 
@@ -305,42 +416,8 @@ sentences.
 
 ------------------------------------------------------------------------
 
-## 10. User-selectable Explanation Settings
 
-### Interaction Index
-
-Supported indices:
-
--   k-SII
--   STII
--   FSII
-
-Default workflow selection is available through the CLI.
-
-### Maximum Order
-
-The user selects the maximum interaction order.
-
-Allowed range:
-
-``` text
-1 to 5
-```
-
-Default:
-
-``` text
-2
-```
-
-The current visualization function explicitly prints first-order and
-second-order values.
-
-Therefore, the intended demo configuration is maximum order 2.
-
-------------------------------------------------------------------------
-
-## 11. Perturbation Strategies
+## 10. Perturbation Strategies
 
 The user does not choose a perturbation strategy.
 
@@ -375,7 +452,7 @@ infilling.
 
 ------------------------------------------------------------------------
 
-## 12. MLM Configuration
+## 11. MLM Configuration
 
 ### MLM Model
 
@@ -408,7 +485,7 @@ higher-sample configuration for final experiments.
 
 ------------------------------------------------------------------------
 
-## 13. SHAPIQ Workflow
+## 12. SHAPIQ Workflow
 
 The demo does not compute interaction values manually.
 
@@ -448,7 +525,7 @@ and visualization pipeline.
 
 ------------------------------------------------------------------------
 
-## 14. Terminal Explanation Output
+## 13. Terminal Explanation Output
 
 For every sentence and perturbation strategy, the demo prints the
 interaction values.
@@ -507,7 +584,7 @@ No Top-k filtering is applied in the current implementation.
 
 ------------------------------------------------------------------------
 
-## 15. Visualization
+## 14. Visualization
 
 The demo uses the official SHAPIQ force plot:
 
@@ -536,12 +613,11 @@ The force plots receive the word-level player names as `feature_names`.
 
 The demo does not reimplement SHAPIQ visualization.
 
-Plots are currently displayed interactively and are not automatically
-saved.
+Plots are currently displayed interactively and are automatically saved.
 
 ------------------------------------------------------------------------
 
-## 16. Result Structure
+## 15. Result Structure
 
 The explanation pipeline stores results in a nested dictionary.
 
@@ -576,7 +652,7 @@ visualization.
 
 ------------------------------------------------------------------------
 
-## 17. Design Principles
+## 16. Design Principles
 
 ### Principle 1
 
@@ -620,32 +696,35 @@ The demo is intended for presentation and experimentation.
 
 ------------------------------------------------------------------------
 
-## 18. Implementation Constraints
+## 17. Project Structure
 
 The demo is implemented as one Python file.
 
-Current demo implementation:
-
 ``` text
-demo/
-    Multilingual Expanation Compasion.py
-```
-
-No additional helper modules are required.
-
-The implementation directly orchestrates:
-
--   translation
--   paraphrasing
--   TextImputer construction
--   SHAPIQ approximation
--   terminal interaction output
--   force plot visualization
+shapiq/
+├── demo/
+│   ├── app.py                                    # Streamlit UI (main entry)
+│   ├── Multilingual_Expanation_Compasion.py      # CLI version
+│   ├── multilingual_demo_design.md               # Design specification
+│   ├── Multilingual_Expanation_Demo_Results/     # Generated outputs (ignored)
+│   └── __init__.py
+├── src/
+│   └── shapiq/                                    # Core library
+│       ├── approximator/                          # SHAPIQ approximators
+│       ├── imputer/                               # TextImputer implementation
+│       ├── plot/                                  # Visualization tools
+│       └── tree/                                  # Tree-based explanations
+├── tests/                                         # Unit tests
+├── .gitignore
+├── README.md
+├── LICENSE
+└── pyproject.toml
+``` 
 
 ------------------------------------------------------------------------
 
-## 19. Current Debug Configuration
-
+## 18. Current Debug Configuration
+The demo supports a debug mode for faster testing.
 The current development version uses:
 
 ``` text
@@ -665,7 +744,28 @@ MLM_NUM_SAMPLES = 100
 
 ------------------------------------------------------------------------
 
-## 20. Expected Outcome
+## 19. Device Configuration
+
+DEVICE = "cpu"
+
+------------------------------------------------------------------------
+
+## 20. Dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| **shapiq** | Latest | Core explanation library |
+| **torch** | 2.0+ | Deep learning framework |
+| **transformers** | 4.30+ | Hugging Face models |
+| **streamlit** | 1.59+ | Web UI framework |
+| **matplotlib** | 3.7+ | Visualization |
+| **numpy** | 1.24+ | Numerical operations |
+| **scipy** | 1.10+ | Scientific computing |
+| **nltk** | 3.9+ | Natural language processing |
+
+------------------------------------------------------------------------
+
+## 21. Expected Outcome
 
 The demo enables users to compare explanation consistency between
 semantically equivalent texts while showcasing the modular `TextImputer`

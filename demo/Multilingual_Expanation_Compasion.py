@@ -586,7 +586,6 @@ def generate_explanations(
 
 def visualize_results(results, sentence_1, sentence_2, interaction_index, max_order):
     """Print and visualize the computed interaction values."""
-    # ===== 新增：保存结果到文件 =====
     save_results_to_file(results, sentence_1, sentence_2, interaction_index, max_order)
     save_force_plots(results, sentence_1, sentence_2)
 
