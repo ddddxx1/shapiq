@@ -24,6 +24,7 @@ from shapiq.approximator.proxy._models import ProxyModel, ProxyModelWithHPO
 from shapiq.game import Game
 from shapiq.game_theory.moebius_converter import MoebiusConverter
 from shapiq.interaction_values import InteractionValues
+
 # from shapiq.tree.interventional.explainer import InterventionalTreeExplainer
 
 if TYPE_CHECKING:

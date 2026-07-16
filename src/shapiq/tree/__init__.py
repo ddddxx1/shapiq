@@ -6,6 +6,7 @@ along with supporting data structures and algorithm variants.
 
 from .base import TreeModel
 from .interventional import InterventionalGame, InterventionalTreeExplainer
+
 # from .linear import LinearTreeSHAP
 from .treeshapiq import TreeSHAPIQ
 

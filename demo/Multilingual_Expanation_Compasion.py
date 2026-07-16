@@ -1,5 +1,4 @@
 # ruff: noqa: T201
-
 """Multilingual Explanation Comparison Demo.
 
 This demo investigates whether SHAPIQ explanations remain consistent across
@@ -27,6 +26,10 @@ It does NOT automatically compare or evaluate explanation consistency.
 
 from __future__ import annotations
 
+import json  # new
+import os  # new
+from datetime import datetime  # new
+
 import torch
 from transformers import (
     AutoModelForCausalLM,
@@ -38,10 +41,6 @@ from transformers import (
 from shapiq.approximator import SHAPIQ
 from shapiq.imputer.text_imputer import TextImputer
 from shapiq.plot import force_plot
-
-import json   #new
-import os     #new
-from datetime import datetime   #new
 
 # ============================================================
 # Configuration
@@ -55,11 +54,9 @@ TRANSLATION_MODEL_DE_EN = "Helsinki-NLP/opus-mt-de-en"
 MLM_MODEL = "bert-base-uncased"
 
 
-EXPLANATION_MODEL = (
-    "lxyuan/distilbert-base-multilingual-cased-sentiments-student"
-)
+EXPLANATION_MODEL = "lxyuan/distilbert-base-multilingual-cased-sentiments-student"
 
-DEBUG = False    #change false
+DEBUG = False  # change false
 
 MLM_NUM_SAMPLES = 3 if DEBUG else 10
 
@@ -74,7 +71,6 @@ EXPLANATION_BUDGET = 2048
 SUPPORTED_INTERACTION_INDICES = [
     "k-SII",
     "STII",
-    "FSII",
 ]
 
 """DEVICE = (
@@ -85,18 +81,10 @@ SUPPORTED_INTERACTION_INDICES = [
 
 DEVICE = "cpu"
 
+# Load explanation model (shared across all explanations)
+tokenizer = AutoTokenizer.from_pretrained(EXPLANATION_MODEL)
 
-tokenizer = AutoTokenizer.from_pretrained(
-
-    EXPLANATION_MODEL
-
-)
-
-model = AutoModelForSequenceClassification.from_pretrained(
-
-    EXPLANATION_MODEL
-
-).to(DEVICE)
+model = AutoModelForSequenceClassification.from_pretrained(EXPLANATION_MODEL).to(DEVICE)
 
 model.eval()
 
@@ -104,19 +92,20 @@ model.eval()
 # CLI Helper Functions
 # ============================================================
 
+
 def ask_choice(
     prompt: str,
     valid_choices: list[str],
 ) -> str:
     """Ask the user to choose one option."""
     while True:
-
         value = input(prompt).strip()
 
         if value in valid_choices:
             return value
 
         print("\nInvalid input. Please try again.\n")
+
 
 def ask_integer(
     prompt: str,
@@ -126,30 +115,23 @@ def ask_integer(
 ) -> int:
     """Read an integer within a given range."""
     while True:
-
         value = input(prompt).strip()
 
         if value == "":
             return default
-
         try:
-
             number = int(value)
-
             if minimum <= number <= maximum:
                 return number
-
         except ValueError:
             pass
+        print(f"Please enter an integer between {minimum} and {maximum}.")
 
-        print(
-            f"Please enter an integer between "
-            f"{minimum} and {maximum}."
-        )
 
 # ============================================================
 # Menu
 # ============================================================
+
 
 def print_header() -> None:
     """Print the demo header."""
@@ -163,12 +145,10 @@ def print_header() -> None:
 
     print("Research Question")
 
-    print(
-        "Are SHAPIQ explanations stable across "
-        "semantically equivalent texts?"
-    )
+    print("Are SHAPIQ explanations stable across semantically equivalent texts?")
 
     print()
+
 
 # ============================================================
 # Text Generation
@@ -188,23 +168,14 @@ def translate_sentence(
         model_name = TRANSLATION_MODEL_DE_EN
 
     else:
-        msg = (
-            f"Unsupported translation direction: "
-            f"{source_language} -> {target_language}"
-        )
-        raise ValueError(
-            msg
-        )
+        msg = f"Unsupported translation direction: {source_language} -> {target_language}"
+        raise ValueError(msg)
 
     print(f"\nLoading translation model: {model_name}")
 
-    translation_tokenizer = AutoTokenizer.from_pretrained(
-        model_name
-    )
+    translation_tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-    translation_model = AutoModelForSeq2SeqLM.from_pretrained(
-        model_name
-    ).to(DEVICE)
+    translation_model = AutoModelForSeq2SeqLM.from_pretrained(model_name).to(DEVICE)
 
     translation_model.eval()
 
@@ -229,6 +200,7 @@ def translate_sentence(
 
     return generated
 
+
 def paraphrase_sentence(
     sentence: str,
     style: str,
@@ -236,13 +208,9 @@ def paraphrase_sentence(
     """Generate a paraphrase with a selected rewriting strength."""
     print(f"\nLoading paraphrase model: {PARAPHRASE_MODEL}")
 
-    paraphrase_tokenizer = AutoTokenizer.from_pretrained(
-        PARAPHRASE_MODEL
-    )
+    paraphrase_tokenizer = AutoTokenizer.from_pretrained(PARAPHRASE_MODEL)
 
-    paraphrase_model = AutoModelForCausalLM.from_pretrained(
-        PARAPHRASE_MODEL
-    ).to(DEVICE)
+    paraphrase_model = AutoModelForCausalLM.from_pretrained(PARAPHRASE_MODEL).to(DEVICE)
 
     paraphrase_model.eval()
 
@@ -267,7 +235,6 @@ def paraphrase_sentence(
         ),
     }
 
-
     messages = [
         {
             "role": "system",
@@ -282,10 +249,7 @@ def paraphrase_sentence(
         },
         {
             "role": "user",
-            "content": (
-                f"{instructions[style]}\n\n"
-                f"Sentence:\n{sentence}"
-            ),
+            "content": (f"{instructions[style]}\n\nSentence:\n{sentence}"),
         },
     ]
 
@@ -328,7 +292,7 @@ def paraphrase_sentence(
 
     generated_tokens = outputs[
         0,
-        inputs["input_ids"].shape[1]:,
+        inputs["input_ids"].shape[1] :,
     ]
 
     generated = paraphrase_tokenizer.decode(
@@ -341,9 +305,11 @@ def paraphrase_sentence(
 
     return generated
 
+
 # ============================================================
 # Comparison Modes
 # ============================================================
+
 
 def user_defined_comparison() -> tuple[str, str]:
     """Read two user-defined sentences for comparison."""
@@ -357,8 +323,9 @@ def user_defined_comparison() -> tuple[str, str]:
 
     return sentence_1, sentence_2
 
+
 def model_generated_translation(
-        sentence: str,
+    sentence: str,
 ) -> str:
     """Generate a translated sentence for comparison."""
     print()
@@ -374,7 +341,6 @@ def model_generated_translation(
     )
 
     if language == "1":
-
         generated = translate_sentence(
             sentence,
             "English",
@@ -382,7 +348,6 @@ def model_generated_translation(
         )
 
     else:
-
         generated = translate_sentence(
             sentence,
             "German",
@@ -391,13 +356,13 @@ def model_generated_translation(
 
     return sentence, generated
 
+
 def paraphrase_mode(
     sentence: str,
 ) -> tuple[str, str]:
     """Select paraphrase strength and generate Sentence 2."""
     print()
     print("Paraphrase Style")
-
     print("1. Conservative")
     print("2. Moderate")
     print("3. Structural")
@@ -414,108 +379,85 @@ def paraphrase_mode(
 
     return sentence, generated
 
+
 def model_generated_comparison() -> tuple[str, str]:
     """Generate a translated or paraphrased sentence for comparison."""
     print()
-
     print("Original Sentence")
-
     sentence = input("> ").strip()
-
     print()
-
     print("Generation Mode")
-
     print("1. Translation")
     print("2. Paraphrase")
-
     mode = ask_choice(
         "\nChoose: ",
         ["1", "2"],
     )
-
     if mode == "1":
-
         return model_generated_translation(
             sentence,
         )
-
     return paraphrase_mode(
         sentence,
     )
 
+
 def choose_comparison_mode() -> tuple[str, str]:
     """Choose the sentence comparison mode."""
     print()
-
     print()
-
     print("Step 1 / 5\n")
-
     print("Comparison Mode")
-
     print("1. User-defined Comparison")
     print("2. Model-generated Comparison")
-
     mode = ask_choice(
         "\nChoose: ",
         ["1", "2"],
     )
-
     if mode == "1":
-
         return user_defined_comparison()
-
     return model_generated_comparison()
+
 
 # ============================================================
 # Explanation Settings
 # ============================================================
 
+
 def choose_explanation_settings() -> tuple[str, int]:
     """Choose the interaction index and maximum interaction order."""
     print()
-
     print("Step 2 / 5\n")
-
     print("Interaction Index")
-
     print("1. k-SII")
     print("2. STII")
-    print("3. FSII")
-
     index = ask_choice(
         "\nChoose: ",
-        ["1", "2", "3"],
+        ["1", "2"],
     )
-
-    interaction_index = SUPPORTED_INTERACTION_INDICES[
-        int(index) - 1
-    ]
-
+    interaction_index = SUPPORTED_INTERACTION_INDICES[int(index) - 1]
     print()
-
     max_order = ask_integer(
         f"Maximum Order [Default {DEFAULT_MAX_ORDER}]: ",
         minimum=1,
         maximum=5,
         default=DEFAULT_MAX_ORDER,
     )
-
     return (
         interaction_index,
         max_order,
     )
 
-# ============================================================
-# Build TextImputer
-# ============================================================
+
+# ========================================================================================
+# Build TextImputer:Construct a TextImputer using the public API implemented in this PR.
+# ========================================================================================
+
 
 def build_text_imputer(
     text: str,
     perturbation_type: str,
 ) -> TextImputer:
-    """Construct a TextImputer using the public API implemented in this PR."""
     kwargs = {
         "model": model,
         "tokenizer": tokenizer,
@@ -524,7 +466,7 @@ def build_text_imputer(
         "perturbation_type": perturbation_type,
         "model_type": "encoder_classifier",
         "class_idx": 0,
-        "output_type": "probability",  #probability改成logit
+        "output_type": "probability",  # probability改成logit
     }
 
     # Only MLM infilling requires additional arguments.
@@ -534,9 +476,11 @@ def build_text_imputer(
 
     return TextImputer(**kwargs)
 
-# ============================================================
-# Explain One Sentence
-# ============================================================
+
+# =================================================================
+# Explain One Sentence:Compute interaction values for one sentence.
+# =================================================================
+
 
 def explain_sentence(
     text: str,
@@ -544,7 +488,6 @@ def explain_sentence(
     interaction_index: str,
     max_order: int,
 ):
-    """Compute interaction values for one sentence."""
     print()
     print("=" * 80)
     print(f"Perturbation : {perturbation_type}")
@@ -557,9 +500,7 @@ def explain_sentence(
 
     # --------------------------------------------------------
     # SHAPIQ approximator
-    #
     # Uses the official shapiq API.
-    # Only this block depends on the current shapiq version.
     # --------------------------------------------------------
 
     approximator = SHAPIQ(
@@ -576,9 +517,11 @@ def explain_sentence(
     feature_names = imputer.player_strategy.get_players()
     return interaction_values, feature_names
 
+
 # ============================================================
 # Explain with Both Perturbation Strategies
 # ============================================================
+
 
 def explain_both_perturbations(
     text: str,
@@ -605,9 +548,11 @@ def explain_both_perturbations(
         "mlm_infilling": mlm_values,
     }
 
+
 # ============================================================
 # Full Explanation Pipeline
 # ============================================================
+
 
 def generate_explanations(
     sentence_1: str,
@@ -633,16 +578,17 @@ def generate_explanations(
 
     return results
 
+
 # ============================================================
 # Visualization
 # ============================================================
+
 
 def visualize_results(results, sentence_1, sentence_2, interaction_index, max_order):
     """Print and visualize the computed interaction values."""
     # ===== 新增：保存结果到文件 =====
     save_results_to_file(results, sentence_1, sentence_2, interaction_index, max_order)
     save_force_plots(results, sentence_1, sentence_2)
-
 
     for sentence_name, sentence_results in results.items():
         print("\n" + "=" * 80)
@@ -655,49 +601,33 @@ def visualize_results(results, sentence_1, sentence_2, interaction_index, max_or
             print(f"\nPerturbation: {perturbation_name}")
 
             # --------------------------------------------------------------
-            # First-order interaction values
+            # print first-order interaction values
             # --------------------------------------------------------------
 
             print("\nFirst-order Interaction Values")
             print("-" * 80)
-
             for player_idx, feature_name in enumerate(feature_names):
                 value = interaction_values[(player_idx,)]
-
-                print(
-                    f"{feature_name:<25} "
-                    f"{value:+.6f}"
-                )
+                print(f"{feature_name:<25} {value:+.6f}")
 
             # --------------------------------------------------------------
-            # Second-order interaction values
+            # print second-order interaction values
             # --------------------------------------------------------------
 
             print("\nSecond-order Interaction Values")
             print("-" * 80)
-
             for player_idx_1 in range(len(feature_names)):
                 for player_idx_2 in range(
                     player_idx_1 + 1,
                     len(feature_names),
                 ):
-                    value = interaction_values[
-                        (player_idx_1, player_idx_2)
-                    ]
+                    value = interaction_values[(player_idx_1, player_idx_2)]
 
                     interaction_name = (
-                        f"{feature_names[player_idx_1]} x "
-                        f"{feature_names[player_idx_2]}"
+                        f"{feature_names[player_idx_1]} x {feature_names[player_idx_2]}"
                     )
 
-                    print(
-                        f"{interaction_name:<40} "
-                        f"{value:+.6f}"
-                    )
-
-            # --------------------------------------------------------------
-            # Force plot
-            # --------------------------------------------------------------
+                    print(f"{interaction_name:<40} {value:+.6f}")
 
             force_plot(
                 interaction_values,
@@ -707,199 +637,96 @@ def visualize_results(results, sentence_1, sentence_2, interaction_index, max_or
 
 
 # ============================================================
-# Save Results
+# Save Results to file
 # ============================================================
+
 
 def save_results_to_file(results, sentence_1, sentence_2, interaction_index, max_order):
     """Save the explanation results to a JSON file."""
-    
-    # 创建保存目录
-    save_dir = "demo_results"
+    save_dir = "demo/Multilingual_Expanation_Demo_Results"
     os.makedirs(save_dir, exist_ok=True)
-    
-    # 生成时间戳
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    
-    # 准备保存的数据
+
     data = {
         "timestamp": timestamp,
         "sentence_1": sentence_1,
         "sentence_2": sentence_2,
         "interaction_index": interaction_index,
         "max_order": max_order,
-        "results": {}
+        "results": {},
     }
-    
+
     for sentence_name, sentence_results in results.items():
         data["results"][sentence_name] = {}
         for perturbation_name, (interaction_values, feature_names) in sentence_results.items():
-            # 提取一阶和二阶值
             first_order = {}
             second_order = {}
-            
+
             for player_idx, feature_name in enumerate(feature_names):
                 first_order[feature_name] = float(interaction_values[(player_idx,)])
-            
+
             for player_idx_1 in range(len(feature_names)):
                 for player_idx_2 in range(player_idx_1 + 1, len(feature_names)):
                     key = f"{feature_names[player_idx_1]} x {feature_names[player_idx_2]}"
                     second_order[key] = float(interaction_values[(player_idx_1, player_idx_2)])
-            
+
             data["results"][sentence_name][perturbation_name] = {
                 "first_order": first_order,
                 "second_order": second_order,
-                "feature_names": feature_names
+                "feature_names": feature_names,
             }
-    
-    # 保存 JSON
+
     json_path = os.path.join(save_dir, f"results_{timestamp}.json")
     with open(json_path, "w") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
-    
     print(f"\n✅ Results saved to: {json_path}")
     return json_path
 
 
 def save_force_plots(results, sentence_1, sentence_2):
     """Save force plots as images."""
-    
-    save_dir = "demo_results"
+    save_dir = "demo/Multilingual_Expanation_Demo_Results"
     os.makedirs(save_dir, exist_ok=True)
-    
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    
-    # 导入 matplotlib
+
     import matplotlib.pyplot as plt
-    
+
     for sentence_name, sentence_results in results.items():
         for perturbation_name, (interaction_values, feature_names) in sentence_results.items():
             try:
-                # 生成文件名
                 filename = f"{sentence_name}_{perturbation_name}_{timestamp}.png"
                 filepath = os.path.join(save_dir, filename)
-                
-                # 方法1：使用 force_plot 并保存
+
                 fig = force_plot(
                     interaction_values,
                     feature_names=feature_names,
                     show=False,
                 )
-                
-                # 如果返回的是 figure，直接保存
-                if hasattr(fig, 'savefig'):
-                    fig.savefig(filepath, dpi=150, bbox_inches='tight')
+
+                if hasattr(fig, "savefig"):
+                    fig.savefig(filepath, dpi=150, bbox_inches="tight")
                 else:
-                    # 方法2：使用 matplotlib 当前 figure
-                    plt.savefig(filepath, dpi=150, bbox_inches='tight')
-                
+                    plt.savefig(filepath, dpi=150, bbox_inches="tight")
+
                 print(f"✅ Force plot saved: {filepath}")
-                
+
             except Exception as e:
                 print(f"⚠️ Could not save force plot for {sentence_name} {perturbation_name}: {e}")
-                print(f"   Try saving manually...")
-                
-                # 方法3：尝试用当前 figure 保存
+                print("   Try saving manually...")
                 try:
                     import matplotlib.pyplot as plt
-                    plt.savefig(filepath, dpi=150, bbox_inches='tight')
+
+                    plt.savefig(filepath, dpi=150, bbox_inches="tight")
                     print(f"✅ Force plot saved (alternative method): {filepath}")
                 except:
                     pass
 
 
 # ============================================================
-# Comparison Visualization
-# ============================================================
-
-def compare_perturbations(results, sentence_1, sentence_2, save_dir="demo_results"):
-    """
-    对比 Removal 和 MLM Infilling 的解释差异
-    
-    生成：一阶值对比柱状图（4个子图）
-    """
-    import matplotlib.pyplot as plt
-    import numpy as np
-    
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    os.makedirs(save_dir, exist_ok=True)
-    
-    # 提取数据
-    sentence_1_removal = results["sentence_1"]["removal"]
-    sentence_1_mlm = results["sentence_1"]["mlm_infilling"]
-    sentence_2_removal = results["sentence_2"]["removal"]
-    sentence_2_mlm = results["sentence_2"]["mlm_infilling"]
-    
-    # 获取特征名称
-    feature_names = sentence_1_removal[1]
-    n_features = len(feature_names)
-    
-    # ========== 一阶值对比柱状图 ==========
-    fig1, axes = plt.subplots(2, 2, figsize=(14, 10))
-    fig1.suptitle("First-Order Interaction Values Comparison", fontsize=16)
-    
-    # 提取一阶值
-    s1_removal_values = [sentence_1_removal[0][(i,)] for i in range(n_features)]
-    s1_mlm_values = [sentence_1_mlm[0][(i,)] for i in range(n_features)]
-    s2_removal_values = [sentence_2_removal[0][(i,)] for i in range(n_features)]
-    s2_mlm_values = [sentence_2_mlm[0][(i,)] for i in range(n_features)]
-    
-    x = np.arange(n_features)
-    width = 0.35
-    
-    # 图1: Sentence 1 - Removal vs MLM
-    ax1 = axes[0, 0]
-    ax1.bar(x - width/2, s1_removal_values, width, label='Removal', color='steelblue')
-    ax1.bar(x + width/2, s1_mlm_values, width, label='MLM Infilling', color='orange')
-    ax1.set_xlabel('Features')
-    ax1.set_ylabel('Interaction Value')
-    ax1.set_title('Sentence 1: Removal vs MLM')
-    ax1.set_xticks(x)
-    ax1.set_xticklabels(feature_names, rotation=45, ha='right')
-    ax1.legend()
-    
-    # 图2: Sentence 2 - Removal vs MLM
-    ax2 = axes[0, 1]
-    ax2.bar(x - width/2, s2_removal_values, width, label='Removal', color='steelblue')
-    ax2.bar(x + width/2, s2_mlm_values, width, label='MLM Infilling', color='orange')
-    ax2.set_xlabel('Features')
-    ax2.set_ylabel('Interaction Value')
-    ax2.set_title('Sentence 2: Removal vs MLM')
-    ax2.set_xticks(x)
-    ax2.set_xticklabels(feature_names, rotation=45, ha='right')
-    ax2.legend()
-    
-    # 图3: Removal - Sentence 1 vs Sentence 2
-    ax3 = axes[1, 0]
-    ax3.bar(x - width/2, s1_removal_values, width, label='Sentence 1', color='steelblue')
-    ax3.bar(x + width/2, s2_removal_values, width, label='Sentence 2', color='green')
-    ax3.set_xlabel('Features')
-    ax3.set_ylabel('Interaction Value')
-    ax3.set_title('Removal: Sentence 1 vs Sentence 2')
-    ax3.set_xticks(x)
-    ax3.set_xticklabels(feature_names, rotation=45, ha='right')
-    ax3.legend()
-    
-    # 图4: MLM - Sentence 1 vs Sentence 2
-    ax4 = axes[1, 1]
-    ax4.bar(x - width/2, s1_mlm_values, width, label='Sentence 1', color='orange')
-    ax4.bar(x + width/2, s2_mlm_values, width, label='Sentence 2', color='red')
-    ax4.set_xlabel('Features')
-    ax4.set_ylabel('Interaction Value')
-    ax4.set_title('MLM: Sentence 1 vs Sentence 2')
-    ax4.set_xticks(x)
-    ax4.set_xticklabels(feature_names, rotation=45, ha='right')
-    ax4.legend()
-    
-    plt.tight_layout()
-    fig1.savefig(os.path.join(save_dir, f'comparison_bar_{timestamp}.png'), dpi=150, bbox_inches='tight')
-    plt.close(fig1)
-    print(f"✅ Bar comparison saved: comparison_bar_{timestamp}.png")
-    print(f"\n✅ Comparison plot saved to: {save_dir}/")
-    return
-
-# ============================================================
 # Main
 # ============================================================
+
 
 def main() -> None:
     """Run the multilingual explanation demo."""
@@ -907,9 +734,7 @@ def main() -> None:
 
     sentence_1, sentence_2 = choose_comparison_mode()
 
-    interaction_index, max_order = (
-        choose_explanation_settings()
-    )
+    interaction_index, max_order = choose_explanation_settings()
 
     print("\nSentence 1")
 
@@ -928,13 +753,8 @@ def main() -> None:
 
     visualize_results(results, sentence_1, sentence_2, interaction_index, max_order)
 
-    print("\n" + "=" * 60)
-    print("Generating comparison plots...")
-    print("=" * 60)
-    compare_perturbations(results, sentence_1, sentence_2)
-
-
     print("\nDemo finished.")
+
 
 # ============================================================
 # Entry Point
