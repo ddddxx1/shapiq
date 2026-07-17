@@ -26,8 +26,20 @@ It does NOT automatically compare or evaluate explanation consistency.
 
 from __future__ import annotations
 
-import json  # new
+import sys 
 import os  # new
+src_path = os.path.join(os.path.dirname(__file__), '..', '..', 'src')
+sys.path.insert(0, src_path)
+
+import types
+fake_cext = types.ModuleType('shapiq.tree.conversion.cext')
+fake_cext.create_edge_tree_arrays = lambda *args, **kwargs: None
+sys.modules['shapiq.tree.conversion.cext'] = fake_cext
+
+import shapiq.tree.conversion.cext as cext
+cext.create_edge_tree_arrays = lambda *args, **kwargs: None
+import json  # new
+
 from datetime import datetime  # new
 
 import torch
@@ -642,7 +654,7 @@ def visualize_results(results, sentence_1, sentence_2, interaction_index, max_or
 
 def save_results_to_file(results, sentence_1, sentence_2, interaction_index, max_order):
     """Save the explanation results to a JSON file."""
-    save_dir = "demo/Multilingual_Expanation_Demo_Results"
+    save_dir = "demo/multilingual/Multilingual_Expanation_Demo_Results"
     os.makedirs(save_dir, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -685,7 +697,7 @@ def save_results_to_file(results, sentence_1, sentence_2, interaction_index, max
 
 def save_force_plots(results, sentence_1, sentence_2):
     """Save force plots as images."""
-    save_dir = "demo/Multilingual_Expanation_Demo_Results"
+    save_dir = "demo/multilingual/Multilingual_Expanation_Demo_Results"
     os.makedirs(save_dir, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 

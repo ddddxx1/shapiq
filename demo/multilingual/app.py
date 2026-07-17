@@ -6,8 +6,13 @@ from __future__ import annotations
 
 import os
 import sys
+src_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'src')
+sys.path.insert(0, src_path)
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src"))
+import types
+fake_cext = types.ModuleType('shapiq.tree.conversion.cext')
+fake_cext.create_edge_tree_arrays = lambda *args, **kwargs: None
+sys.modules['shapiq.tree.conversion.cext'] = fake_cext
 
 from datetime import datetime
 
@@ -417,7 +422,7 @@ if st.session_state.results is not None:
     # Force plots, show and save
     st.subheader("Force Plots")
 
-    save_dir = "demo/Multilingual_Expanation_Demo_Results"
+    save_dir = "demo/multilingual/Multilingual_Expanation_Demo_Results"
     os.makedirs(save_dir, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 

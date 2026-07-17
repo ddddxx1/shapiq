@@ -70,14 +70,14 @@ After installation, you can run the demo in two ways:
 #### Web Interface (Recommended)
 
 ```bash
-streamlit run demo/app.py
+streamlit run demo/multilingual/app.py
 ```
 You will see the Streamlit app running at http://localhost:8501 in your browser. (Google Chrome is better way to open it.)
 
 #### Command Line Interface
 
 ```bash
-PYTHONPATH=src python demo/Multilingual_Expanation_Compasion.py
+PYTHONPATH=src python demo/multilingual/Multilingual_Expanation_Compasion.py
 ```
 
 Follow the terminal prompts to compare explanations.
