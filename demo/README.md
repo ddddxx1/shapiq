@@ -15,39 +15,22 @@ itself, but to investigate:
 > Are SHAPIQ explanations, especially interaction values, stable across
 > semantically equivalent texts such as translations or paraphrases?
 
-The demo showcases the newly implemented `TextImputer` together with
-SHAPIQ interaction explanations.
-插图
-------------------------------------------------------------------------
+The demo showcases the newly implemented `TextImputer` together with SHAPIQ interaction explanations.
 
-## 2. Research Question
-
-Given two semantically equivalent sentences,
-
--   original sentence
--   translated sentence (English ↔ German)
--   paraphrased sentence (English)
-
-run the same explanation pipeline and compare:
-
-- **First-order interaction values** — individual feature contributions and displayed as bar charts
-- **Second-order interaction values** — pairwise feature interactions
-- **Force plots** — SHAPIQ's interactive visualizations
-
-
-The demo does not automatically conclude whether explanations are
-stable. Instead, it visualizes and prints the explanation evidence for the
-presenter or user to compare.
+![Main Page](images_UI/main_page.png)
 
 ------------------------------------------------------------------------
 
-## ✨ Features
+## 2. Features
 
 | Feature | Description |
 |---------|-------------|
 | **Two Comparison Modes** | User-defined (any two sentences) or Model-generated (translation/paraphrase) |
 | **Multiple Interaction Indices** | k-SII, STII |
 | **Two Perturbation Strategies** | Removal (baseline) and MLM Infilling (context-aware) |
+| **First-Order Values** | Individual feature contributions and displayed as bar charts |
+| **Second-Order Values** | Pairwise feature interactions |
+| **Force Plot Visualization** | SHAPIQ's interactive explanation plots visualizations|
 | **Multi-language Support** | English ↔ German (translation); English paraphrasing |
 | **Result Export** | JSON data + PNG force plots saved automatically |
 | **Two Interfaces** | Web UI (Streamlit) + CLI (terminal) |
@@ -91,30 +74,22 @@ Sentence 2                              |
                                     |
                            InteractionValues
                                     |
-                  Terminal Values + SHAPIQ Force Plot
+                      show Values + SHAPIQ Force Plot
 ```
 
 ------------------------------------------------------------------------
 
 ## 4. Comparison Modes
 
+Two comparison modes are available.
+
 ### 4.1 User-defined Comparison
 
-The user directly provides two sentences.
+The user can directly provide two sentences to compare.
 
 Example:
 
-**Sentence 1**
-
-``` text
-The movie was fantastic.
-```
-
-**Sentence 2**
-
-``` text
-Der Film war fantastisch.
-```
+![User-defined Comparison](images_UI/User-defined_Comparison.png)
 
 No text generation model is used.
 
@@ -122,44 +97,36 @@ No text generation model is used.
 
 ### 4.2 Model-generated Comparison
 
-The user provides one original sentence.
-
-The second sentence is automatically generated.
+The user provides one original sentence. The second sentence is automatically generated.
 
 Two generation modes are supported:
 
 -   Translation
+![Translation Mode](images_UI/translation_Mode.png)
 -   Paraphrase
+![Paraphrase Mode](images_UI/paraphrase_Mode.png)
 
 ------------------------------------------------------------------------
 
 ## 5. Translation
 
-### Supported Languages
+### Supported Languages & Models
 
 The current implementation supports:
 
--   English → German
--   German → English
-
-### Translation Models
-
-English to German:
+-   English → German by using Model:
 
 ``` text
 Helsinki-NLP/opus-mt-en-de
 ```
 
-German to English:
+-   German → English by using Model:
 
 ``` text
 Helsinki-NLP/opus-mt-de-en
 ```
 
-Translation is performed with `AutoModelForSeq2SeqLM`.
-
-The translation models are loaded only when translation mode is
-selected.
+The translation models will be loaded only when translation mode is selected.
 
 ------------------------------------------------------------------------
 
@@ -203,12 +170,7 @@ and not introduce new information.
 Qwen/Qwen2.5-0.5B-Instruct
 ```
 
-The model is loaded with `AutoModelForCausalLM`.
-
-The prompt uses the tokenizer chat template and requests exactly one
-paraphrased sentence without explanations or quotation marks.
-
-Generated text cannot be manually edited inside the demo workflow.
+The prompt uses the tokenizer chat template and requests exactly one paraphrased sentence without explanations or quotation marks.Generated text cannot be manually edited inside the demo workflow.
 
 ------------------------------------------------------------------------
 
@@ -218,7 +180,12 @@ Generated text cannot be manually edited inside the demo workflow.
 
 The recommended way to explore the demo. Provides an interactive dashboard with real-time visualization.
 
-use command line: streamlit run demo/app.py
+use command line: 
+
+``` text
+streamlit run demo/app.py
+```
+
 Then open your browser to http://localhost:8501
 
 
@@ -233,20 +200,12 @@ Then open your browser to http://localhost:8501
 
 ---
 
-#### Step 2: Select Generation Mode (Model-generated only)
+#### Step 2: Select Generation Mode (Model-generated in Sidebar only)
 
 | Mode | Description |
 |------|-------------|
-| **Translation** | Translate between English and German using OPUS-MT |
-| **Paraphrase** | Generate a paraphrase using Qwen2.5-0.5B-Instruct |
-
-**Three paraphrase styles are available:**
-
-| Style | Description |
-|-------|-------------|
-| **Conservative** | Minimal changes, synonym replacement only |
-| **Moderate** | Clearly different wording, different sentence structure |
-| **Structural** | Changed grammatical structure, preserves entities and facts |
+| **Translation** | Translate between English and German |
+| **Paraphrase** | Generate a paraphrase by choosing three paraphrase styles(Conservative\Moderate\Structural)|
 
 ---
 
@@ -257,12 +216,21 @@ Then open your browser to http://localhost:8501
 | **Interaction Index** | k-SII, STII | Shapley interaction indices |
 | **Maximum Order** | 1–5 (default 2) | Maximum interaction order to compute |
 
+| Index | Full Name | Description |
+|-------|-----------|-------------|
+| **k-SII** | k‑Shapley Interaction Index | Standard Shapley interaction index. Suitable for general comparison. First-order values are non-zero.|
+| **STII** | Shapley‑Taylor Interaction Index | Derived from Taylor expansion. More sensitive to higher-order interactions. First-order values are non-zero. |
+
+![Interaction Index](images_UI/Interaction_Index.png)
+
 ---
 
 #### Step 4: Enter Sentences (Main Area)
 
-- **Sentence 1**: The reference sentence (or original sentence in Model-generated mode)
+- **Sentence 1**: The reference sentence (or example sentence in Model-generated mode)
 - **Sentence 2**: The comparison sentence (auto-generated in Model-generated mode)
+
+![Translated Result](images_UI/translated.png)
 
 ---
 
@@ -272,26 +240,58 @@ After clicking **"Run Explanation"**, the following outputs are displayed:
 
 **1. First-Order Interaction Values (Bar Charts)**
 
-- Individual contribution of each word
-- Shown separately for Sentence 1 and Sentence 2
-- Separate tabs for Removal and MLM Infilling
+![Bar Chart View](images_UI/bar_view.png)
+
+These charts show the individual contribution of each word to the model's prediction.
+- Positive bars indicate words that push the prediction toward the target class (positive sentiment)
+- Negative bars indicate words that push the prediction away
+- Separate charts are shown for Sentence 1 and Sentence 2
+- Separate tabs distinguish Removal and MLM Infilling strategies
+- Hover over bars to see exact values
+
+**Interactive Features:**
+- **Zoom**: Mouse wheel or button to zoom in/out
+- **Reset**: Double-click the chart or click the reset button to restore default view
+- **View Values**: Hover or click on bars to see exact contribution values
+- **Toolbar**: Zoom, reset, and download as PNG buttons available in the top-right corner
+- **View Switching**: Bar Chart Mode or Table Mode: Click the "Table View" button in the chart toolbar to switch from bar chart to a numerical table, showing exact contribution values for each word — ideal for copying or exporting data, switch between modes anytime to suit different needs: visual analysis vs. precise data inspection
+
+![Table View](images_UI/table_view.png)
 
 **2. Force Plots (Interactive Visualizations)**
 
-- SHAPIQ's signature explanation plots
+![Force Plots](images_UI/force_plots.png)
+
+These are the official SHAPIQ force plots that visualize both individual and interaction effects.
+- Each word is shown as a colored block
+- **Red blocks** indicate positive contributions toward the target class
+- **Blue blocks** indicate negative contributions (pushing toward the opposite class)
+- The size of each block represents the magnitude of contribution
+- The base value (center line) shows the prediction without any features
 - 4 plots total: Sentence 1/2 × Removal/MLM Infilling
-- Saved as PNG files automatically
+- Automatically saved as PNG files
 
-**[插图位置: 结果展示截图 - 显示一阶值柱状图和 Force Plot]**
+**Interactive Features:**
+- **Zoom**: zoom in/out button for each plot
+
+**Interpretation Tips:**
+- Compare the same word across Sentence 1 and Sentence 2 to check cross-lingual stability
+- Compare Removal vs MLM Infilling to see how context affects the explanation
+- Large red blocks indicate strong positive sentiment drivers
+- Large blue blocks indicate strong negative sentiment drivers
 
 
-The demo also uses a CLI terminal interface.
+### CLI Terminal Interfaces
 
-For terminal-based interaction: PYTHONPATH=src python demo/Multilingual_Expanation_Compasion.py
+The demo also provides a CLI terminal interface.
 
-No Gradio.
+For terminal-based interaction: 
 
-No Streamlit.
+``` text
+PYTHONPATH=src python demo/Multilingual_Expanation_Compasion.py
+```
+
+No Gradio. No Streamlit.
 
 Menus use numbered choices.
 
@@ -341,11 +341,12 @@ Maximum Order [Default 2]: 2
 [... results displayed ...]
 ```
 
+
 Invalid menu inputs are detected and the user is asked to enter a valid
 option again.
 
 The current visualization function explicitly prints first-order and
-second-order values.Therefore, the intended demo configuration is maximum order 2.
+second-order values. Therefore, the intended demo configuration is maximum order 2.
 
 ------------------------------------------------------------------------
 
@@ -401,8 +402,6 @@ These player names are passed to the force plot as `feature_names`.
 lxyuan/distilbert-base-multilingual-cased-sentiments-student
 ```
 
-The model is loaded with `AutoModelForSequenceClassification`.
-
 The explanation target is configured as:
 
 ``` text
@@ -429,7 +428,11 @@ The demo automatically runs both:
 perturbation_type = removal
 ```
 
-This provides a fast baseline.
+Each word is **removed** (replaced with `[MASK]`) one at a time.  
+The change in prediction measures that word's importance.
+
+- Fast baseline
+- Assumes words are independent
 
 ### Experiment 2: MLM Infilling
 
@@ -437,7 +440,12 @@ This provides a fast baseline.
 perturbation_type = mlm_infilling
 ```
 
-This provides context-aware perturbation.
+Each word is **masked and predicted** by BERT based on surrounding context.  
+The difference between original and predicted output measures importance.
+
+- Context-aware
+- More realistic but slower
+- Uses `bert-base-uncased` with configurable samples (`MLM_NUM_SAMPLES`)
 
 Both perturbation strategies use the same:
 
@@ -485,34 +493,46 @@ higher-sample configuration for final experiments.
 
 ------------------------------------------------------------------------
 
-## 12. SHAPIQ Workflow
+## 12. Models Summary
 
-The demo does not compute interaction values manually.
+| Purpose | Model |
+|---------|-------|
+| **Explanation Model** | `lxyuan/distilbert-base-multilingual-cased-sentiments-student` |
+| **English → German Translation** | `Helsinki-NLP/opus-mt-en-de` |
+| **German → English Translation** | `Helsinki-NLP/opus-mt-de-en` |
+| **Paraphrase** | `Qwen/Qwen2.5-0.5B-Instruct` |
+| **MLM Infilling** | `bert-base-uncased` |
 
-For every sentence and perturbation strategy:
 
-``` text
+------------------------------------------------------------------------
+
+## 13. SHAPIQ Workflow
+
+The demo does not compute interaction values manually，explains step by step how the demo computes the interaction values.
+
+For every sentence and perturbation strategy, the demo calls SHAPIQ's API:
+
+```text
 Text
  |
  v
-TextImputer
+TextImputer              ← Converts text to word-level features
  |
  v
-SHAPIQ(
+SHAPIQ(                  ← Initialize SHAPIQ
     n = imputer.n_features,
     index = selected interaction index,
     max_order = selected maximum order
 )
  |
  v
-approximator.approximate(
-    budget = 2048,
+approximator.approximate( ← Compute interaction values
+    budget = 2048,        ← Fixed sampling budget
     game = imputer
 )
  |
  v
-InteractionValues
-```
+InteractionValues       
 
 The explanation budget is currently fixed to:
 
@@ -525,12 +545,14 @@ and visualization pipeline.
 
 ------------------------------------------------------------------------
 
-## 13. Terminal Explanation Output
+## 14. Terminal Explanation Output
 
 For every sentence and perturbation strategy, the demo prints the
-interaction values.
+interaction values in two formats:
 
-### First-order Interaction Values
+### Terminal Output (Human-readable)
+
+#### First-order Interaction Values — individual feature contributions:
 
 For every player index `i`, the demo retrieves:
 
@@ -556,7 +578,7 @@ fantastic                 +0.421160
 .                         -0.049468
 ```
 
-### Second-order Interaction Values
+#### Second-order Interaction Values — pairwise feature interactions:
 
 For every player pair `(i, j)` with `i < j`, the demo retrieves:
 
@@ -578,13 +600,31 @@ was x fantastic                          -0.098765
 ```
 
 The terminal currently prints all first-order and all second-order
-values.
+values. No Top-k filtering is applied in the current implementation.
 
-No Top-k filtering is applied in the current implementation.
+### JSON Export (Machine-readable)
+
+Same data is saved to demo/Multilingual_Expanation_Demo_Results/results_*.json:
+
+``` text
+{
+  "timestamp": "20260716_201613",
+  "sentence_1": "The movie is good!",
+  "sentence_2": "Der Film ist gut!",
+  "results": {
+    "sentence_1": {
+      "removal": {
+        "first_order": {"The": 0.006, "movie": 0.067, "good": 0.525},
+        "second_order": {"The x movie": 0.017, "movie x good": -0.158}
+      }
+    }
+  }
+}
+```
 
 ------------------------------------------------------------------------
 
-## 14. Visualization
+## 15. Visualization
 
 The demo uses the official SHAPIQ force plot:
 
@@ -592,12 +632,9 @@ The demo uses the official SHAPIQ force plot:
 force_plot(
     interaction_values,
     feature_names=feature_names,
-    show=True,
+    show=False,    # Displayed in UI, not as pop-up
 )
 ```
-
-A force plot is produced for every sentence and every perturbation
-strategy.
 
 For two sentences and two perturbation strategies, the current workflow
 produces four force plots:
@@ -609,94 +646,21 @@ Sentence 2 + Removal
 Sentence 2 + MLM Infilling
 ```
 
+### UI Mode (Streamlit)
+
+Force plots displayed inline in the web interface
+4 plots total: Sentence 1/2 × Removal/MLM Infilling
+Automatically saved as PNG files
+
+### CLI Mode
+
+Force plots saved as PNG files in demo/Multilingual_Expanation_Demo_Results/
 The force plots receive the word-level player names as `feature_names`.
-
-The demo does not reimplement SHAPIQ visualization.
-
-Plots are currently displayed interactively and are automatically saved.
+The demo does not reimplement SHAPIQ visualization, it uses the official force_plot function directly.
 
 ------------------------------------------------------------------------
 
-## 15. Result Structure
-
-The explanation pipeline stores results in a nested dictionary.
-
-Conceptually:
-
-``` text
-results
- |
- +-- sentence_1
- |      |
- |      +-- removal
- |      |      +-- InteractionValues
- |      |      +-- feature_names
- |      |
- |      +-- mlm_infilling
- |             +-- InteractionValues
- |             +-- feature_names
- |
- +-- sentence_2
-        |
-        +-- removal
-        |      +-- InteractionValues
-        |      +-- feature_names
-        |
-        +-- mlm_infilling
-               +-- InteractionValues
-               +-- feature_names
-```
-
-This keeps explanation computation separate from terminal output and
-visualization.
-
-------------------------------------------------------------------------
-
-## 16. Design Principles
-
-### Principle 1
-
-The demo visualizes evidence.
-
-It does not automatically determine whether explanations are stable.
-
-### Principle 2
-
-Translation and paraphrasing are only methods for generating Sentence 2.
-
-The real purpose of the demo is explanation comparison.
-
-### Principle 3
-
-The demo never reimplements `TextImputer`.
-
-Everything goes through the public API.
-
-### Principle 4
-
-The demo never reimplements SHAPIQ interaction computation.
-
-Interaction values are produced by the SHAPIQ approximator.
-
-### Principle 5
-
-The official SHAPIQ force plot is used for visualization.
-
-### Principle 6
-
-The same explanation target is used for both semantically equivalent
-sentences so that their explanation structures can be compared.
-
-### Principle 7
-
-Readability is preferred over unnecessary software engineering
-complexity.
-
-The demo is intended for presentation and experimentation.
-
-------------------------------------------------------------------------
-
-## 17. Project Structure
+## 16. Project Structure
 
 The demo is implemented as one Python file.
 
@@ -723,7 +687,7 @@ shapiq/
 
 ------------------------------------------------------------------------
 
-## 18. Current Debug Configuration
+## 17. Current Debug Configuration
 The demo supports a debug mode for faster testing.
 The current development version uses:
 
@@ -744,13 +708,25 @@ MLM_NUM_SAMPLES = 100
 
 ------------------------------------------------------------------------
 
-## 19. Device Configuration
+## 18. Device & Demo Configuration
 
 DEVICE = "cpu"
 
+
+| Setting | Value | Description |
+|---------|-------|-------------|
+| Player Level | Word | Features are individual words |
+| Perturbation Strategies | Removal + MLM Infilling | Both strategies run automatically |
+| MLM Model | `bert-base-uncased` | BERT for context-aware infilling |
+| MLM Samples | `3` (Debug) / `100` (Full) | Fast debug vs. accurate experiment |
+| Default Interaction Index | k-SII | Standard Shapley interaction index |
+| Default Maximum Order | 2 | Computes 1st and 2nd order interactions |
+| Explanation Budget | 2048 | Sampling budget for SHAPIQ approximation |
+| Class Index | 0 | Target class for explanation (positive sentiment) |
+
 ------------------------------------------------------------------------
 
-## 20. Dependencies
+## 19. Dependencies
 
 | Package | Version | Purpose |
 |---------|---------|---------|
@@ -762,6 +738,76 @@ DEVICE = "cpu"
 | **numpy** | 1.24+ | Numerical operations |
 | **scipy** | 1.10+ | Scientific computing |
 | **nltk** | 3.9+ | Natural language processing |
+
+------------------------------------------------------------------------
+
+## 20. Getting Started
+
+### Prerequisites
+
+- Python 3.12 or higher
+- Git
+- Optional: conda for environment management
+
+### Installation
+
+#### Step 1: Clone the Repository
+
+```bash
+git clone https://github.com/ddddxx1/shapiq.git
+cd shapiq
+git checkout Multilingualdemo-Liang
+```
+
+#### Step 2: Set Up Environment
+
+```bash
+# Using conda (recommended)
+conda create -n shapiq_demo python=3.12
+conda activate shapiq_demo
+```
+
+#### Step 3: Install Dependencies
+
+```bash
+# Install from source (development mode)
+pip install -e .
+
+# Install extra dependencies for text explanation
+pip install -e ".[text]"
+
+# Or install all required packages directly
+pip install torch transformers shapiq streamlit matplotlib numpy scipy nltk
+```
+
+#### Step 4: Set Python Path (if needed)
+
+```bash
+export PYTHONPATH=src:$PYTHONPATH
+```
+Note: The demo requires models to be downloaded on first run. Model caching is enabled, so subsequent runs will be faster.
+
+
+### Usage
+
+After installation, you can run the demo in two ways:
+
+#### Web Interface (Recommended)
+
+```bash
+streamlit run demo/app.py
+```
+You will see the Streamlit app running at http://localhost:8501 in your browser. (Google Chrome is better way to open it.)
+
+#### Command Line Interface
+
+```bash
+PYTHONPATH=src python demo/Multilingual_Expanation_Compasion.py
+```
+
+Follow the terminal prompts to compare explanations.
+
+Note: If you encounter any issues or errors, please consult an AI assistant or refer to the error messages for troubleshooting.
 
 ------------------------------------------------------------------------
 
