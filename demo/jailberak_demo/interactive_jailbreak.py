@@ -175,7 +175,7 @@ def attribute(
         )
         return {"players": players, "n": n, "sv": None, "sii": None, "full_score": None}
 
-    full_score = imputer.full_prediction()
+    full_score = imputer.full_prediction
     print(f"\nfull malicious probability (target class): {full_score:.6f}")
 
     exact = ExactComputer(n_players=n, game=imputer)
@@ -312,8 +312,6 @@ class Session:
         record["timestamp_utc"] = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
 
         step_json = self.dir / f"step_{idx:02d}.json"
-        with step_json.open("w", encoding="utf-8") as f:
-            json.dump(record, f, ensure_ascii=False, indent=2)
 
         saved = {"json": step_json.name}
         if attr is not None and attr.get("sv") is not None:
@@ -368,8 +366,6 @@ class Session:
             "final_state": self.steps[-1]["record"],
         }
         summary_path = self.dir / "session.json"
-        with summary_path.open("w", encoding="utf-8") as f:
-            json.dump(summary, f, ensure_ascii=False, indent=2)
         print(f"[session saved] {summary_path.resolve()}  ({len(self.steps)} steps)")
 
 
