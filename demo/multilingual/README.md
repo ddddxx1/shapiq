@@ -90,25 +90,30 @@ Note: If you encounter any issues or errors, please consult an AI assistant or r
 
 ------------------------------------------------------------------------
 
-## 4. Comparison Modes
+### Step 1 — Choose a Comparison Mode
 
 Two comparison modes are available.
 
-### 4.1 User-defined Comparison
+#### User-defined Comparison
 
-The user can directly provide two sentences to compare.
+Enter two sentences manually.
 
 Example:
 
-![User-defined Comparison](images_UI/User-defined_Comparison.png)
+```text
+Sentence 1:  
+The movie was fantastic.
+
+Sentence 2: 
+Der Film war fantastisch.
+```
 
 No text generation model is used.
 
-------------------------------------------------------------------------
 
-### 4.2 Model-generated Comparison
+#### Model-generated Comparison
 
-The user provides one original sentence. The second sentence is automatically generated.
+Enter one original sentence. The second sentence is automatically generated.
 
 Two generation modes are supported:
 
@@ -117,9 +122,11 @@ Two generation modes are supported:
 -   Paraphrase
 ![Paraphrase Mode](images_UI/paraphrase_Mode.png)
 
-------------------------------------------------------------------------
+---
 
-## 5. Translation
+### Step 2 — Select Generation Mode (Model-generated Only)
+
+####  Translation
 
 ### Supported Languages & Models
 
@@ -139,41 +146,15 @@ Helsinki-NLP/opus-mt-de-en
 
 The translation models will be loaded only when translation mode is selected.
 
-------------------------------------------------------------------------
 
-## 6. Paraphrase
+#### Paraphrase
 
 The current implementation provides three paraphrase styles.
 
-### Conservative
+- Conservative
+- Moderate
+- Structural
 
-Minimal changes.
-
-The model is instructed to replace only a few words with synonyms while
-preserving sentence structure and meaning.
-
-Generation is deterministic.
-
-### Moderate
-
-Clearly different wording and a noticeably different sentence structure.
-
-The exact meaning and important information should remain unchanged.
-
-Sampling is enabled.
-
-### Structural
-
-The grammatical structure should be visibly changed.
-
-The model is explicitly instructed to preserve:
-
--   entities
--   facts
--   sentiment
--   relationships
-
-and not introduce new information.
 
 ### Paraphrase Model
 
@@ -183,300 +164,70 @@ Qwen/Qwen2.5-0.5B-Instruct
 
 The prompt uses the tokenizer chat template and requests exactly one paraphrased sentence without explanations or quotation marks.Generated text cannot be manually edited inside the demo workflow.
 
-------------------------------------------------------------------------
+---
 
-## 7. User Interface
+### Step 3 — Configure Explanation Settings
 
-### Web Interface (Streamlit) — Recommended
+#### Shapley Interaction Index
+
+Supported indices:
+
+- k-SII: k‑Shapley Interaction Index
+- STII: Shapley‑Taylor Interaction Index
+
+#### Maximum Interaction Order
+
+Range:
+
+```text
+1–5
+```
+
+Default:
+
+```text
+2
+```
+
+### Step 4 — Compute Explanations
+
+For each sentence, the demo automatically computes explanations using both perturbation strategies:
+
+- Removal
+- MLM Infilling
+
+---
+
+
+### Output & Visualization
 
 The recommended way to explore the demo. Provides an interactive dashboard with real-time visualization.
 
-use command line: 
-
-``` text
-streamlit run demo/app.py
-```
-
-Then open your browser to http://localhost:8501
-
-
-### Interactive Workflow
-
-#### Step 1: Choose Comparison Mode (Sidebar)
-
-| Mode | Description |
-|------|-------------|
-| **User-defined** | Enter two sentences manually for comparison |
-| **Model-generated** | Enter one sentence, auto-generate the second via translation or paraphrase |
-
----
-
-#### Step 2: Select Generation Mode (Model-generated in Sidebar only)
-
-| Mode | Description |
-|------|-------------|
-| **Translation** | Translate between English and German |
-| **Paraphrase** | Generate a paraphrase by choosing three paraphrase styles(Conservative\Moderate\Structural)|
-
----
-
-#### Step 3: Choose Explanation Settings (Sidebar)
-
-| Setting | Options | Description |
-|---------|---------|-------------|
-| **Interaction Index** | k-SII, STII | Shapley interaction indices |
-| **Maximum Order** | 1–5 (default 2) | Maximum interaction order to compute |
-
-| Index | Full Name | Description |
-|-------|-----------|-------------|
-| **k-SII** | k‑Shapley Interaction Index | Standard Shapley interaction index. Suitable for general comparison. First-order values are non-zero.|
-| **STII** | Shapley‑Taylor Interaction Index | Derived from Taylor expansion. More sensitive to higher-order interactions. First-order values are non-zero. |
-
-![Interaction Index](images_UI/Interaction_Index.png)
-
----
-
-#### Step 4: Enter Sentences (Main Area)
-
-- **Sentence 1**: The reference sentence (or example sentence in Model-generated mode)
-- **Sentence 2**: The comparison sentence (auto-generated in Model-generated mode)
-
-![Translated Result](images_UI/translated.png)
-
----
-
-#### Step 5: View Results
-
 After clicking **"Run Explanation"**, the following outputs are displayed:
 
-**1. First-Order Interaction Values (Bar Charts)**
+![Main Page](images_UI/main_page.png)
+
+**1. First-Order Interaction Values in two different views**
 
 ![Bar Chart View](images_UI/bar_view.png)
 
-These charts show the individual contribution of each word to the model's prediction.
-- Positive bars indicate words that push the prediction toward the target class (positive sentiment)
-- Negative bars indicate words that push the prediction away
-- Separate charts are shown for Sentence 1 and Sentence 2
-- Separate tabs distinguish Removal and MLM Infilling strategies
-- Hover over bars to see exact values
-
-**Interactive Features:**
-- **Zoom**: Mouse wheel or button to zoom in/out
-- **Reset**: Double-click the chart or click the reset button to restore default view
-- **View Values**: Hover or click on bars to see exact contribution values
-- **Toolbar**: Zoom, reset, and download as PNG buttons available in the top-right corner
-- **View Switching**: Bar Chart Mode or Table Mode: Click the "Table View" button in the chart toolbar to switch from bar chart to a numerical table, showing exact contribution values for each word — ideal for copying or exporting data, switch between modes anytime to suit different needs: visual analysis vs. precise data inspection
-
 ![Table View](images_UI/table_view.png)
 
-**2. Force Plots (Interactive Visualizations)**
+**2. SHAOIQ Force Plots (Interactive Visualizations)**
 
 ![Force Plots](images_UI/force_plots.png)
 
-These are the official SHAPIQ force plots that visualize both individual and interaction effects.
-- Each word is shown as a colored block
-- **Red blocks** indicate positive contributions toward the target class
-- **Blue blocks** indicate negative contributions (pushing toward the opposite class)
-- The size of each block represents the magnitude of contribution
-- The base value (center line) shows the prediction without any features
-- 4 plots total: Sentence 1/2 × Removal/MLM Infilling
-- Automatically saved as PNG files
 
-**Interactive Features:**
-- **Zoom**: zoom in/out button for each plot
+For two sentences and two perturbation strategies, a complete comparison therefore produces four explanation results saved in file:
 
-**Interpretation Tips:**
-- Compare the same word across Sentence 1 and Sentence 2 to check cross-lingual stability
-- Compare Removal vs MLM Infilling to see how context affects the explanation
-- Large red blocks indicate strong positive sentiment drivers
-- Large blue blocks indicate strong negative sentiment drivers
-
-
-### CLI Terminal Interfaces
-
-The demo also provides a CLI terminal interface.
-
-For terminal-based interaction: 
-
-``` text
-PYTHONPATH=src python demo/Multilingual_Expanation_Compasion.py
-```
-
-No Gradio. No Streamlit.
-
-Menus use numbered choices.
-
-Example:
-
-``` text
-============================================================
-SHAPIQ Multilingual Explanation Demo
-============================================================
-
-Research Question
-Are SHAPIQ explanations stable across semantically equivalent texts?
-
-Step 1 / 5
-
-Comparison Mode
-1. User-defined Comparison
-2. Model-generated Comparison
-
-Choose: 2
-
-Original Sentence
-> The movie is good!
-
-Generation Mode
-1. Translation
-2. Paraphrase
-
-Choose: 1
-
-Source Language
-1. English
-2. German
-
-Choose: 1
-
-Step 2 / 5
-
-Interaction Index
-1. k-SII
-2. STII
-
-Choose: 1
-
-Maximum Order [Default 2]: 2
-
-[... results displayed ...]
-```
-
-
-Invalid menu inputs are detected and the user is asked to enter a valid
-option again.
-
-The current visualization function explicitly prints first-order and
-second-order values. Therefore, the intended demo configuration is maximum order 2.
+- Sentence 1 + Removal
+- Sentence 1 + MLM Infilling
+- Sentence 2 + Removal
+- Sentence 2 + MLM Infilling
 
 ------------------------------------------------------------------------
 
-## 14. Terminal Explanation Output
-
-For every sentence and perturbation strategy, the demo prints the
-interaction values in two formats:
-
-### Terminal Output (Human-readable)
-
-#### First-order Interaction Values — individual feature contributions:
-
-For every player index `i`, the demo retrieves:
-
-``` python
-interaction_values[(i,)]
-```
-
-and aligns the value with:
-
-``` python
-feature_names[i]
-```
-
-Example:
-
-``` text
-First-order Interaction Values
---------------------------------------------------------------------------------
-The                       -0.000037
-movie                     +0.057387
-was                       -0.076947
-fantastic                 +0.421160
-.                         -0.049468
-```
-
-#### Second-order Interaction Values — pairwise feature interactions:
-
-For every player pair `(i, j)` with `i < j`, the demo retrieves:
-
-``` python
-interaction_values[(i, j)]
-```
-
-The corresponding feature names are printed together.
-
-Example:
-
-``` text
-Second-order Interaction Values
---------------------------------------------------------------------------------
-The x movie                              +0.012345
-The x fantastic                          -0.023456
-movie x fantastic                        +0.134567
-was x fantastic                          -0.098765
-```
-
-The terminal currently prints all first-order and all second-order
-values. No Top-k filtering is applied in the current implementation.
-
-### JSON Export (Machine-readable)
-
-Same data is saved to demo/Multilingual_Expanation_Demo_Results/results_*.json:
-
-``` text
-{
-  "timestamp": "20260716_201613",
-  "sentence_1": "The movie is good!",
-  "sentence_2": "Der Film ist gut!",
-  "results": {
-    "sentence_1": {
-      "removal": {
-        "first_order": {"The": 0.006, "movie": 0.067, "good": 0.525},
-        "second_order": {"The x movie": 0.017, "movie x good": -0.158}
-      }
-    }
-  }
-}
-```
-
-------------------------------------------------------------------------
-
-## 15. Visualization
-
-The demo uses the official SHAPIQ force plot:
-
-``` python
-force_plot(
-    interaction_values,
-    feature_names=feature_names,
-    show=False,    # Displayed in UI, not as pop-up
-)
-```
-
-For two sentences and two perturbation strategies, the current workflow
-produces four force plots:
-
-``` text
-Sentence 1 + Removal
-Sentence 1 + MLM Infilling
-Sentence 2 + Removal
-Sentence 2 + MLM Infilling
-```
-
-### UI Mode (Streamlit)
-
-Force plots displayed inline in the web interface
-4 plots total: Sentence 1/2 × Removal/MLM Infilling
-Automatically saved as PNG files
-
-### CLI Mode
-
-Force plots saved as PNG files in demo/Multilingual_Expanation_Demo_Results/
-The force plots receive the word-level player names as `feature_names`.
-The demo does not reimplement SHAPIQ visualization, it uses the official force_plot function directly.
-
-------------------------------------------------------------------------
-
-## 17. Models Summary
+## 4. Models Summary
 
 | Purpose | Model |
 |---------|-------|
@@ -488,10 +239,9 @@ The demo does not reimplement SHAPIQ visualization, it uses the official force_p
 
 ------------------------------------------------------------------------
 
-## 18. Device & Demo Configuration
+## 5. Device & Demo Configuration
 
 DEVICE = "cpu"
-
 
 | Setting | Value | Description |
 |---------|-------|-------------|
@@ -503,20 +253,5 @@ DEVICE = "cpu"
 | Default Maximum Order | 2 | Computes 1st and 2nd order interactions |
 | Explanation Budget | 2048 | Sampling budget for SHAPIQ approximation |
 | Class Index | 0 | Target class for explanation (positive sentiment) |
-
-------------------------------------------------------------------------
-
-## 19. Dependencies
-
-| Package | Version | Purpose |
-|---------|---------|---------|
-| **shapiq** | Latest | Core explanation library |
-| **torch** | 2.0+ | Deep learning framework |
-| **transformers** | 4.30+ | Hugging Face models |
-| **streamlit** | 1.59+ | Web UI framework |
-| **matplotlib** | 3.7+ | Visualization |
-| **numpy** | 1.24+ | Numerical operations |
-| **scipy** | 1.10+ | Scientific computing |
-| **nltk** | 3.9+ | Natural language processing |
 
 ------------------------------------------------------------------------
